@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/vultisig/vultisigner/plugin/dca"
 	"net/http"
 	"time"
 
@@ -136,6 +137,8 @@ func (s *Server) CreatePluginPolicy(c echo.Context) error {
 	switch policy.PluginType {
 	case "payroll":
 		plugin = payroll.NewPayrollPlugin(s.db)
+	case "dca":
+		plugin = dca.NewDCAPlugin(s.db)
 	}
 
 	if plugin == nil {
