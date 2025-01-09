@@ -49,6 +49,7 @@ func main() {
 	server := api.NewServer(
 		cfg.Server.Port,
 		redisStorage,
+		redisOptions,
 		client,
 		inspector,
 		cfg.Server.VaultsFilePath,
