@@ -1,3 +1,9 @@
+.dca-form {
+    border: 1px solid #1F2A37;
+    border-radius: 16px;
+    padding: 24px;
+}
+
 input {
     background: transparent;
     border: none;
@@ -131,10 +137,10 @@ select {
 .swap-btn {
     display: flex;
     justify-content: center;
-    position: absolute;
+    position: relative;
     left: calc(50% - 18px);
-    /* todo 205px is hardcoded */
-    top: calc(205px + 7px - 18px);
+    margin-top: -16px;
+    margin-bottom: -16px;
     width: 36px;
     height: 36px;
     background: #1F2A37;
@@ -154,6 +160,20 @@ select {
         width: 20px;
         height: 20px;
     }
+}
+
+.form-title {
+    font-weight: 600;
+    font-size: 24px;
+    color: #FFFFFF;
+}
+
+.form-subtitle {
+    font-weight: 400;
+    font-size: 14px;
+    color: #CBD7E9;
+    margin-bottom: 24px;
+    margin-top: 8px;
 }
 
 .error {

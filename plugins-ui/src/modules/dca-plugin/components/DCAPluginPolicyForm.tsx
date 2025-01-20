@@ -47,8 +47,11 @@ const DCAPluginPolicyForm = () => {
             <form
                 onSubmit={e => e.preventDefault()}
                 noValidate
+                className="dca-form"
                 autoComplete="off"
             >
+                <div className="form-title">DCA Plugin Policy</div>
+                <div className="form-subtitle">Set up configuration settings for DCA Plugin Policy</div>
                 <div className="input-field-inline">
                     <div>
                         <Input {...allocate_from_validation} />

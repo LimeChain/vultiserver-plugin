@@ -9,8 +9,6 @@ function Modal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void; }) {
     return (
         <div className="modal-overlay">
             <div className="modal-content">
-                <div className="modal-title">DCA Plugin Policy</div>
-                <div className="modal-subtitle">Set up configuration settings for DCA Plugin Policy</div>
                 <button className="modal-close" onClick={onClose}>
                     <img src={closeIcon} alt="" />
                 </button>
