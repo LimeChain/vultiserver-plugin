@@ -1,0 +1,91 @@
+package signing
+
+import (
+	"encoding/hex"
+	"fmt"
+	"log"
+	"math/big"
+	"strconv"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/vultisig/mobile-tss-lib/tss"
+)
+
+func SignLegacyTx(keysignResponse tss.KeysignResponse, txHash string, rawTx string, chainID *big.Int) (*types.Transaction, *common.Address, error) {
+	unsignedTxBytes, err := hex.DecodeString(rawTx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode raw transaction: %w", err)
+	}
+
+	unsignedTx := new(types.Transaction)
+	if err := unsignedTx.UnmarshalBinary(unsignedTxBytes); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal unsigned transaction: %w", err)
+	}
+
+	r, ok := new(big.Int).SetString(keysignResponse.R, 16)
+	if !ok {
+		return nil, nil, fmt.Errorf("failed to parse R")
+	}
+
+	s, ok := new(big.Int).SetString(keysignResponse.S, 16)
+	if !ok {
+		return nil, nil, fmt.Errorf("failed to parse S")
+	}
+
+	recID, err := strconv.ParseInt(keysignResponse.RecoveryID, 10, 8)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse recovery ID: %w", err)
+	}
+	recoveryID := uint8(recID) // 0 or 1
+
+	// recover public key and address
+	txHashBytes, err := hex.DecodeString(txHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode transaction hash: %w", err)
+	}
+	pubKey, err := crypto.SigToPub(txHashBytes, rawSignature(r, s, uint8(recoveryID)))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to recover public key: %w", err)
+	}
+	pubKeyBytes := crypto.FromECDSAPub(pubKey)
+	address := crypto.PubkeyToAddress(*pubKey)
+	log.Println("Recovered public key: ", hex.EncodeToString(pubKeyBytes))
+	log.Println("Recovered address: ", address)
+
+	// Manually reconstruct the unsigned transaction to ensure consistency
+	tx := types.NewTransaction(
+		unsignedTx.Nonce(),
+		*unsignedTx.To(),
+		unsignedTx.Value(),
+		unsignedTx.Gas(),
+		unsignedTx.GasPrice(),
+		unsignedTx.Data(),
+	)
+
+	signer := types.NewEIP155Signer(chainID)
+	signedTx, err := tx.WithSignature(signer, rawSignature(r, s, recoveryID))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to attach signature: %w", err)
+	}
+
+	// recover the sender's address
+	sender, err := signer.Sender(signedTx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to recover sender: %w", err)
+	}
+	fmt.Println("Sender address: ", sender.Hex())
+	fmt.Println("Original tx hash: ", signedTx.Hash().Hex()[2:])
+	fmt.Println("Signer tx Hash: ", signer.Hash(signedTx).Hex()[2:])
+
+	return signedTx, &sender, nil
+}
+
+func rawSignature(r *big.Int, s *big.Int, recoveryID uint8) []byte {
+	var signature [65]byte
+	copy(signature[0:32], r.Bytes())
+	copy(signature[32:64], s.Bytes())
+	signature[64] = byte(recoveryID)
+	return signature[:]
+}

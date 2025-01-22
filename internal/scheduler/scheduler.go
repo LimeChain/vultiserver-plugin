@@ -124,6 +124,9 @@ func (s *SchedulerService) checkAndEnqueueTasks() error {
 				"task_id":   ti.ID,
 				"policy_id": trigger.PolicyID,
 			}).Info("Enqueued trigger task")
+
+			// TODO: quick hack to prevent multiple executions
+			time.Sleep(1 * time.Minute)
 		}
 	}
 

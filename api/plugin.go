@@ -7,20 +7,26 @@ import (
 	"net/http"
 	"time"
 
+	gcommon "github.com/ethereum/go-ethereum/common"
 	gtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
 	"github.com/vultisig/vultisigner/common"
+	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/internal/tasks"
 	"github.com/vultisig/vultisigner/internal/types"
 	"github.com/vultisig/vultisigner/plugin"
 	"github.com/vultisig/vultisigner/plugin/dca"
 	"github.com/vultisig/vultisigner/plugin/payroll"
+	"github.com/vultisig/vultisigner/uniswap"
 )
 
 func (s *Server) SignPluginMessages(c echo.Context) error {
-	s.logger.Info("Starting SignPluginMessages")
+	s.logger.Warn("PLUGIN SERVER: SIGN MESSAGES")
+
 	var req types.PluginKeysignRequest
 	if err := c.Bind(&req); err != nil {
 		return fmt.Errorf("fail to parse request, err: %w", err)
@@ -47,6 +53,24 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 	switch policy.PluginType {
 	case "payroll":
 		plugin = payroll.NewPayrollPlugin(s.db)
+	case "dca":
+		cfg, err := config.ReadConfig("config-plugin")
+		if err != nil {
+			logrus.Fatal("failed to read plugin config", err)
+		}
+		rpcClient, err := ethclient.Dial(cfg.Server.Plugin.Eth.Rpc)
+		if err != nil {
+			logrus.Fatal("failed to initialize rpc client", err)
+		}
+		uniswapV2RouterAddress := gcommon.HexToAddress(cfg.Server.Plugin.Eth.Uniswap.V2Router)
+		uniswapCfg := uniswap.NewConfig(
+			rpcClient,
+			&uniswapV2RouterAddress,
+			2000000, // TODO: config
+			50000,   // TODO: config
+			time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
+		)
+		plugin = dca.NewDCAPlugin(uniswapCfg, s.db, s.logger)
 	}
 
 	if plugin == nil {
@@ -67,6 +91,7 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 	if txHash != req.Messages[0] {
 		return fmt.Errorf("message hash does not match transaction hash. expected %s, got %s", txHash, req.Messages[0])
 	}
+	s.logger.Info("Transaction hash", txHash)
 
 	// Reuse existing signing logic
 	result, err := s.redis.Get(c.Request().Context(), req.SessionID)
@@ -92,12 +117,13 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 		return fmt.Errorf("fail to decrypt vault from the backup, err: %w", err)
 	}
 
+	req.StartSession = false
+	req.Parties = []string{"1", "2"}
+
 	buf, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("fail to marshal to json, err: %w", err)
 	}
-
-	//Todo : check that tx is done only once per period
 
 	// Create transaction with PENDING status first
 	policyUUID, err := uuid.Parse(req.PolicyID)
@@ -126,6 +152,7 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 		return fmt.Errorf("failed to create transaction record: %w", err)
 	}
 
+	s.logger.Warn("PLUGIN SERVER: KEYSIGN TASK")
 	ti, err := s.client.EnqueueContext(c.Request().Context(),
 		asynq.NewTask(tasks.TypeKeySign, buf),
 		asynq.MaxRetry(-1),
@@ -146,9 +173,7 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 		s.logger.Errorf("Failed to update transaction with task ID: %v", err)
 	}
 
-	s.logger.Infof("Created transaction history for tx from plugin: %s...",
-		req.Transaction[:min(20, len(req.Transaction))],
-	)
+	s.logger.Infof("Created transaction history for tx from plugin: %s...", req.Transaction[:min(20, len(req.Transaction))])
 
 	return c.JSON(http.StatusOK, ti.ID)
 }
@@ -271,7 +296,23 @@ func (s *Server) CreatePluginPolicy(c echo.Context) error {
 	case "payroll":
 		plugin = payroll.NewPayrollPlugin(s.db)
 	case "dca":
-		plugin = dca.NewDCAPlugin(s.db)
+		cfg, err := config.ReadConfig("config-plugin")
+		if err != nil {
+			return fmt.Errorf("failed to read plugin config, err: %w", err)
+		}
+		rpcClient, err := ethclient.Dial(cfg.Server.Plugin.Eth.Rpc)
+		if err != nil {
+			return err
+		}
+		uniswapV2RouterAddress := gcommon.HexToAddress(cfg.Server.Plugin.Eth.Uniswap.V2Router)
+		uniswapCfg := uniswap.NewConfig(
+			rpcClient,
+			&uniswapV2RouterAddress,
+			2000000, // TODO: config
+			50000,   // TODO: config
+			time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
+		)
+		plugin = dca.NewDCAPlugin(uniswapCfg, s.db, s.logger)
 	}
 
 	if plugin == nil {
