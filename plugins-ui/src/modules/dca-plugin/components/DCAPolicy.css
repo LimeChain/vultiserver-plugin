@@ -48,7 +48,7 @@ input[type="number"]::-webkit-outer-spin-button {
     }
 
     input {
-        font-size: 16px;
+        font-size: 1rem;
         border: 1px solid #6B7280;
         border-radius: 12px;
         height: 48px;
@@ -67,7 +67,7 @@ label {
     display: flex;
     color: #F9FAFB;
     font-weight: 400;
-    font-size: 14px;
+    font-size: 0.875rem;
 }
 
 .input-container {
@@ -93,7 +93,7 @@ select {
     padding: 12px;
     border-radius: 8px;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 0.875rem;
     border: none;
 
     &:hover {
@@ -116,7 +116,7 @@ select {
     display: flex;
     justify-content: flex-start;
     color: #9CA3AF;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 400;
 }
 
@@ -170,7 +170,7 @@ select {
 
 .form-subtitle {
     font-weight: 400;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: #CBD7E9;
     margin-bottom: 24px;
     margin-top: 8px;

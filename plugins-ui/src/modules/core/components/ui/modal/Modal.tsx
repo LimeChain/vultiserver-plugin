@@ -1,9 +1,13 @@
-import DCAPluginPolicyForm from "@/modules/dca-plugin/components/DCAPluginPolicyForm";
+import { ReactNode } from "react";
 import "./Modal.css";
 import closeIcon from "@/assets/Close.svg";
 
+type ModalProps = {
+    isOpen: boolean, children: ReactNode,
+    onClose: () => void;
+}
 
-function Modal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void; }) {
+function Modal({ isOpen, children, onClose }: ModalProps) {
     if (!isOpen) return null;
 
     return (
@@ -12,7 +16,7 @@ function Modal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void; }) {
                 <button className="modal-close" onClick={onClose}>
                     <img src={closeIcon} alt="" />
                 </button>
-                <DCAPluginPolicyForm />
+                {children}
             </div>
         </div>
     );

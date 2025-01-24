@@ -9,8 +9,11 @@ export type Policy = {
         total_amount: string,
         total_orders: string,
         schedule: {
-            frequency: string,
+            frequency: Frequency,
+            interval: string,
             start_time: string
         }
     },
 }
+
+export type Frequency = "minute" | "hour" | "day" | "week" | "month";

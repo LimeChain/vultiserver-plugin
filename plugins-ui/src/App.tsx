@@ -1,17 +1,19 @@
-import { useState } from 'react';
 import './App.css'
-import Modal from './modules/core/components/ui/modal/Modal';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import DCAPluginPolicyForm from './modules/dca-plugin/components/DCAPluginPolicyForm';
+import ExpandableDCAPlugin from './modules/dca-plugin/components/expandable-dca-plugin/ExpandablePlugin';
 
 const App = () => {
-    const [isModalOpen, setModalOpen] = useState(false);
 
     return (
-        <>
-            <DCAPluginPolicyForm />
-            {!isModalOpen && <button onClick={() => setModalOpen(true)}>Form in modal</button>}
-            <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)} />
-        </>
+        <BrowserRouter>
+            <Routes>
+                <Route path="/dca-plugin">
+                    <Route index element={<ExpandableDCAPlugin />} />
+                    <Route path="/dca-plugin/form" element={<DCAPluginPolicyForm />} />
+                </Route>
+            </Routes>
+        </BrowserRouter>
     );
 };
 

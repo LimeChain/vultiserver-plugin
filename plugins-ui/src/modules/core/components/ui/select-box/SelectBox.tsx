@@ -1,13 +1,18 @@
-export default function SelectBox() {
-    // todo do not hardcode the options
+import { useFormContext } from "react-hook-form";
+
+type SelectBoxProps = {
+    name: string,
+    options: string[],
+    defaultValue: string
+}
+export default function SelectBox({ name, options, defaultValue }: SelectBoxProps) {
+    const {
+        register,
+    } = useFormContext()
     return (
         <>
-            <select aria-label="every" name="selectedTime" defaultValue="minute">
-                <option value="minute">minute</option>
-                <option value="hour">hour</option>
-                <option value="day">day</option>
-                <option value="week">week</option>
-                <option value="month">month</option>
+            <select aria-label="select option" {...register(name)} defaultValue={defaultValue}>
+                {options.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
         </>
     );

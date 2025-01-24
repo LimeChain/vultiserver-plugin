@@ -3,20 +3,40 @@ import "./DCAPolicy.css";
 import swapIcon from "@/assets/Swap.svg";
 import usdcIcon from "@/assets/USDC.png";
 import wethIcon from "@/assets/WETH.png";
-import { allocate_from_validation, orders_validation, time_period_validation } from "@/modules/dca-plugin/utils/inputSpecifications";
+import { allocate_from_validation, generateMinTimeInputValidation, orders_validation } from "@/modules/dca-plugin/utils/inputSpecifications";
 import ToggleSwitch from "@/modules/core/components/ui/toggle-switch/ToggleSwitch";
 import SelectBox from "@/modules/core/components/ui/select-box/SelectBox";
 import { Input } from "@/modules/core/components/ui/input/Input";
 import { v4 as uuidv4 } from 'uuid';
 import DCAService from "../services/dcaService";
-import { Policy } from "../models/policy";
+import { Frequency, Policy } from "../models/policy";
+import { useNavigate } from "react-router-dom";
 
+type DCAPluginPolicyProps = {
+    data?: Policy,
+    closeFunc?: () => void
+}
 
-const DCAPluginPolicyForm = () => {
-    const methods = useForm();
+type PluginFormData = {
+    orders: string, amount: string, interval: string, frequency: Frequency
+}
 
-    const onSubmit = methods.handleSubmit(async data => {
-        const policy: Policy = {
+const DCAPluginPolicyForm = ({ data, closeFunc }: DCAPluginPolicyProps) => {
+    const defaultValues: PluginFormData = { orders: "", amount: "", interval: "", frequency: "minute" }
+    if (data) {
+        defaultValues.amount = data.policy.total_amount
+        defaultValues.orders = data.policy.total_orders
+        defaultValues.interval = data.policy.schedule.interval
+        defaultValues.frequency = data.policy.schedule.frequency
+    }
+
+    const methods = useForm<PluginFormData>({
+        defaultValues
+    });
+    let navigate = useNavigate();
+
+    const onSubmit = methods.handleSubmit(async submitData => {
+        const newPolicy: Policy = {
             id: uuidv4(), // todo move to BE
             public_key: "8540b779a209ef961bf20618b8e22c678e7bfbad37ec0",
             plugin_type: "dca",
@@ -24,17 +44,23 @@ const DCAPluginPolicyForm = () => {
                 chain_id: "1", // hardcoded for now
                 source_token_id: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH
                 destination_token_id: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
-                total_amount: data.allocateAmount,
-                total_orders: data.orders,
+                total_amount: submitData.amount,
+                total_orders: submitData.orders,
                 schedule: {
-                    frequency: data.every,
-                    start_time: ""
+                    frequency: submitData.frequency,
+                    interval: submitData.interval,
+                    start_time: Date.now().toString(),
                 }
             },
         }
 
         try {
-            await DCAService.createPolicy(policy);
+            await DCAService.createPolicy(newPolicy);
+            if (closeFunc) {
+                closeFunc();
+            } else {
+                navigate("/dca-plugin")
+            }
         } catch (error: any) {
             console.error('Failed to create policy:', error.message);
         }
@@ -82,8 +108,8 @@ const DCAPluginPolicyForm = () => {
                     <div className="input-field-outline">
 
                         <div className="input-container">
-                            <Input {...time_period_validation} />
-                            <SelectBox />
+                            <Input {...generateMinTimeInputValidation(methods.watch("frequency"))} />
+                            <SelectBox name="frequency" options={["minute", "hour", "day", "week", "month"]} defaultValue={defaultValues.frequency} />
                         </div>
                     </div>
 
@@ -102,7 +128,7 @@ const DCAPluginPolicyForm = () => {
                     onClick={onSubmit}
                     className="submit"
                 >
-                    Start
+                    {data ? "Save changes" : "Save"}
                 </button>
             </form>
         </FormProvider>
