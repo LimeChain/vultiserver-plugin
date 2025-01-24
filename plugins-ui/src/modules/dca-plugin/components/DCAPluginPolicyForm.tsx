@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import DCAService from "../services/dcaService";
 import { Frequency, Policy } from "../models/policy";
 import { useNavigate } from "react-router-dom";
+import Button from "@/modules/core/components/ui/button/Button";
 
 type DCAPluginPolicyProps = {
     data?: Policy,
@@ -90,9 +91,9 @@ const DCAPluginPolicyForm = ({ data, closeFunc }: DCAPluginPolicyProps) => {
                         <div>&nbsp;USDC</div>
                     </div>
                 </div>
-                <button className="swap-btn">
-                    <img src={swapIcon} alt="" />
-                </button>
+                <Button className="swap-btn" type="secondary" size='small' style={{ backgroundColor: "#1F2A37", borderRadius: "8px", padding: "8px" }} onClick={() => console.log("todo call some function here")}>
+                    <img src={swapIcon} alt="" width="20px" height="20px" />
+                </Button>
                 <div className="input-field-inline" style={{ flexDirection: "column", alignItems: "flex-start", color: "#FFFFFF" }}>
                     <div>
                         To Buy
@@ -124,15 +125,10 @@ const DCAPluginPolicyForm = ({ data, closeFunc }: DCAPluginPolicyProps) => {
                     <div>Enable given policy</div>
                     <ToggleSwitch />
                 </div>
-                <button
-                    onClick={onSubmit}
-                    className="submit"
-                >
+                <Button type="primary" size="medium" className="submit" style={{ borderRadius: "8px" }} onClick={onSubmit}>
                     {data ? "Save changes" : "Save"}
-                </button>
+                </Button>
             </form>
         </FormProvider>
     );
 };
-
-export default DCAPluginPolicyForm;

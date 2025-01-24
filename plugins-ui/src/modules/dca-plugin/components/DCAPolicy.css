@@ -89,27 +89,6 @@ select {
 .submit {
     width: 100%;
     height: 44px;
-    background-color: #33E6BF;
-    padding: 12px;
-    border-radius: 8px;
-    font-weight: 500;
-    font-size: 0.875rem;
-    border: none;
-
-    &:hover {
-        background-color: #15D7AC;
-    }
-
-    &:focus {
-        background-color: #15D7AC;
-        outline: none;
-    }
-
-    &:disabled {
-        background-color: rgba(51, 230, 191, 0.37);
-        color: rgba(255, 255, 255, 0.4);
-        cursor: not-allowed
-    }
 }
 
 .dollar-equivalent {
@@ -141,25 +120,6 @@ select {
     left: calc(50% - 18px);
     margin-top: -16px;
     margin-bottom: -16px;
-    width: 36px;
-    height: 36px;
-    background: #1F2A37;
-    border: none;
-
-
-    &:hover {
-        background-color: #111928;
-    }
-
-    &:focus {
-        background-color: #111928;
-        outline: none;
-    }
-
-    img {
-        width: 20px;
-        height: 20px;
-    }
 }
 
 .form-title {

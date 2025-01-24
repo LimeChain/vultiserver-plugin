@@ -5,16 +5,17 @@ type ButtonProps = {
     type: "primary" | "secondary" | "tertiary",
     size: "small" | "medium"
     children: ReactNode,
+    className: string,
     onClick: () => any,
     style?: {},
 }
 
-const Button = ({ type, size, children, onClick, style }: ButtonProps) => {
+const Button = ({ type, size, children, className, onClick, style }: ButtonProps) => {
 
     return (
         <button
             onClick={onClick}
-            className={`button ${type} ${size}`}
+            className={`button ${type} ${size} ${className}`}
             style={style}
         >
             {children}
