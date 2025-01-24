@@ -17,3 +17,7 @@ export type Policy = {
 }
 
 export type Frequency = "minute" | "hour" | "day" | "week" | "month";
+
+export type PluginFormData = {
+    orders: string, amount: string, interval: string, frequency: Frequency
+}
