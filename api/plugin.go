@@ -276,6 +276,12 @@ func (s *Server) CreatePluginPolicy(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
+	if err := plugin.SetupPluginPolicy(&policy); err != nil {
+		err = fmt.Errorf("failed to setup policy: %w", err)
+		s.logger.Error(err)
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
 	if err := plugin.ValidatePluginPolicy(policy); err != nil {
 		err = fmt.Errorf("failed to validate policy: %w", err)
 		s.logger.Error(err)

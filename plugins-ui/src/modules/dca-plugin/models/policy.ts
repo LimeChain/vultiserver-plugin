@@ -1,5 +1,5 @@
 export type Policy = {
-    id: string,
+    id?: string,
     public_key: string,
     plugin_type: "dca",
     policy: {

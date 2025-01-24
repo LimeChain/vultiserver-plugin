@@ -7,7 +7,6 @@ import { allocate_from_validation, generateMinTimeInputValidation, orders_valida
 import ToggleSwitch from "@/modules/core/components/ui/toggle-switch/ToggleSwitch";
 import SelectBox from "@/modules/core/components/ui/select-box/SelectBox";
 import { Input } from "@/modules/core/components/ui/input/Input";
-import { v4 as uuidv4 } from 'uuid';
 import DCAService from "../services/dcaService";
 import { Frequency, Policy } from "../models/policy";
 import { useNavigate } from "react-router-dom";
@@ -16,7 +15,7 @@ import { generatePolicy } from "../utils/policy.utils";
 
 type DCAPluginPolicyProps = {
     data?: Policy,
-    onSubmitCallback: (data: Policy) => void
+    onSubmitCallback?: (data: Policy) => void
 }
 
 type PluginFormData = {
@@ -47,7 +46,11 @@ const DCAPluginPolicyForm = ({ data, onSubmitCallback }: DCAPluginPolicyProps) =
         if (data) {
             try {
                 await DCAService.updatePolicy(policy);
-                onSubmitCallback(data);
+
+                if (onSubmitCallback) {
+                    onSubmitCallback(data);
+                }
+
                 methods.reset();
             } catch (error: any) {
                 console.error('Failed to create policy:', error.message);

@@ -1,5 +1,4 @@
 import { PluginFormData, Policy } from "../models/policy";
-import { v4 as uuidv4 } from 'uuid';
 
 export const generatePolicy = (submitData: PluginFormData, data?: Policy): Policy => {
 
@@ -21,7 +20,6 @@ export const generatePolicy = (submitData: PluginFormData, data?: Policy): Polic
     }
 
     return {
-        id: uuidv4(), // todo move to BE
         public_key: "8540b779a209ef961bf20618b8e22c678e7bfbad37ec0",
         plugin_type: "dca",
         policy: {
