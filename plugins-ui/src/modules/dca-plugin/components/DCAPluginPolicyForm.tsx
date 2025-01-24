@@ -132,3 +132,5 @@ const DCAPluginPolicyForm = ({ data, closeFunc }: DCAPluginPolicyProps) => {
         </FormProvider>
     );
 };
+
+export default DCAPluginPolicyForm;
