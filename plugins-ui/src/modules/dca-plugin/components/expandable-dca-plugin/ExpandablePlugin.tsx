@@ -23,7 +23,7 @@ const ExpandableDCAPlugin = () => {
                 const fetchedPolicies = await DCAService.getPolicies();
 
                 const constructPolicyMap: Map<string, Policy> = new Map(
-                    fetchedPolicies.map((p: Policy) => [p.id, p]) // Convert the array into [key, value] pairs
+                    fetchedPolicies?.map((p: Policy) => [p.id, p]) // Convert the array into [key, value] pairs
                 );
 
                 setPolicyMap(constructPolicyMap)
