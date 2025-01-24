@@ -9,7 +9,13 @@ const handleResponse = async (response: any) => {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Something went wrong');
     }
-    return response;
+
+    // Parse and return the response JSON
+    try {
+        return await response.json();
+    } catch (err) {
+        return;
+    }
 };
 
 /**
@@ -42,22 +48,26 @@ export const post = async (endpoint: string, data: any, options?: any) => {
     }
 };
 
-// /**
-//  * Performs a GET request.
-//  * @param {string} endpoint - The API endpoint.
-//  * @param {Object} options - Additional fetch options (e.g., headers).
-//  */
-// export const get = async (endpoint: string, options = {}) => {
-//     try {
-//         const response = await fetch(`${BASE_URL}${endpoint}`, {
-//             method: 'GET',
-//             ...options,
-//         });
-//         return handleResponse(response);
-//     } catch (error) {
-//         handleError(error);
-//     }
-// };
+/**
+ * Performs a GET request.
+ * @param {string} endpoint - The API endpoint.
+ * @param {Object} options - Additional fetch options (e.g., headers).
+ */
+export const get = async (endpoint: string, options: any) => {
+    try {
+        const response = await fetch(`${BASE_URL}${endpoint}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                ...options?.headers,
+            },
+            ...options,
+        });
+        return handleResponse(response);
+    } catch (error) {
+        handleError(error);
+    }
+};
 
 // /**
 //  * Performs a PUT request.

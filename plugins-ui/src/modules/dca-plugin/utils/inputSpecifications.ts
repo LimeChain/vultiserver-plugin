@@ -1,8 +1,10 @@
+import { Frequency } from "../models/policy"
+
 export const allocate_from_validation = {
-  name: 'allocateAmount',
+  name: 'amount',
   label: 'I want to Allocate',
   type: 'number',
-  id: 'allocateAmount',
+  id: 'amount',
   placeholder: '',
   validation: {
     required: {
@@ -12,11 +14,39 @@ export const allocate_from_validation = {
   },
 }
 
-export const time_period_validation = {
-  name: 'timePeriod',
+const timeValidations = {
+  minute: {
+    value: 15,
+    message: "min 15 minutes"
+  },
+  hour: {
+    value: 1,
+    message: "min 1 hours"
+  },
+  day: {
+    value: 1,
+    message: "min 1 days"
+  },
+  week: {
+    value: 1,
+    message: "min 1 week"
+  },
+  month: {
+    value: 1,
+    message: "min 1 month"
+  },
+}
+
+export const generateMinTimeInputValidation = (frequency: Frequency) => {
+  time_period_validation.validation.min = timeValidations[frequency];
+  return time_period_validation;
+}
+
+const time_period_validation = {
+  name: 'interval',
   label: 'Every',
   type: 'number',
-  id: 'timePeriod',
+  id: 'interval',
   placeholder: '',
   validation: {
     required: {
@@ -25,7 +55,7 @@ export const time_period_validation = {
     },
     min: {
       value: 15,
-      message: "min 15 minutes"
+      message: "min 15 minutes" // default
     },
   },
 }
