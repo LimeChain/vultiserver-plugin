@@ -5,7 +5,7 @@ type ButtonProps = {
     type: "primary" | "secondary" | "tertiary",
     size: "small" | "medium"
     children: ReactNode,
-    className: string,
+    className?: string,
     onClick: () => any,
     style?: {},
 }

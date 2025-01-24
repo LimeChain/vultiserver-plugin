@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import "./Modal.css";
 import closeIcon from "@/assets/Close.svg";
+import Button from "../button/Button";
 
 type ModalProps = {
     isOpen: boolean, children: ReactNode,
@@ -13,9 +14,9 @@ function Modal({ isOpen, children, onClose }: ModalProps) {
     return (
         <div className="modal-overlay">
             <div className="modal-content">
-                <button className="modal-close" onClick={onClose}>
+                <Button type="tertiary" size="medium" className="modal-close" onClick={onClose}>
                     <img src={closeIcon} alt="" />
-                </button>
+                </Button>
                 {children}
             </div>
         </div>
