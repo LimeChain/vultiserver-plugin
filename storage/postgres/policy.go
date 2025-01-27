@@ -31,7 +31,7 @@ func (p *PostgresBackend) UpdatePluginPolicy(policyDoc types.PluginPolicy) error
 
 	_, err = p.pool.Exec(context.Background(), `UPDATE plugin_policies 
 	SET id = $1, public_key = $2, plugin_id = $3, plugin_version = $4, policy_version = $5, plugin_type = $6, signature = $7, policy = $8
-	WHERE id = $1`, policyDoc.ID, policyDoc.PublicKey, policyDoc.PluginID, policyDoc.PluginVersion, "2", policyDoc.PluginType, policyDoc.Signature, policyJSON)
+	WHERE id = $1`, policyDoc.ID, policyDoc.PublicKey, policyDoc.PluginID, policyDoc.PluginVersion, policyDoc.PolicyVersion, policyDoc.PluginType, policyDoc.Signature, policyJSON)
 	return err
 }
 
