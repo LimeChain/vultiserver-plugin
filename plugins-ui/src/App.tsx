@@ -11,7 +11,7 @@ import Button from './modules/core/components/ui/button/Button';
 // TODO: refactor the chain selector
 
 const App = () => {
-    const [chain, setChain] = useState(() => localStorage.getItem("chain") || "ethereum");
+    const [chain, setChain] = useState(() => localStorage.getItem("chain"));
     const [provider, setProvider] = useState<any>(null);
 
     const getCurrentProvider = (chain: string) => {
@@ -26,11 +26,6 @@ const App = () => {
         setProvider(currentProvider);
         console.log("Chain:", chain);
     }, [chain]);
-
-    useEffect(() => {
-        if (!provider) return;
-        console.log("Provider:", provider);
-    }, [provider]);
 
     const connectEthereum = async (provider: any) => {
         if (provider) {
