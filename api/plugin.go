@@ -230,7 +230,23 @@ func (s *Server) UpdatePluginPolicyById(c echo.Context) error {
 	case "payroll":
 		plugin = payroll.NewPayrollPlugin(s.db)
 	case "dca":
-		plugin = dca.NewDCAPlugin(s.db)
+		cfg, err := config.ReadConfig("config-plugin")
+		if err != nil {
+			logrus.Fatal("failed to read plugin config", err)
+		}
+		rpcClient, err := ethclient.Dial(cfg.Server.Plugin.Eth.Rpc)
+		if err != nil {
+			logrus.Fatal("failed to initialize rpc client", err)
+		}
+		uniswapV2RouterAddress := gcommon.HexToAddress(cfg.Server.Plugin.Eth.Uniswap.V2Router)
+		uniswapCfg := uniswap.NewConfig(
+			rpcClient,
+			&uniswapV2RouterAddress,
+			2000000, // TODO: config
+			50000,   // TODO: config
+			time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
+		)
+		plugin = dca.NewDCAPlugin(uniswapCfg, s.db, s.logger)
 	}
 
 	if plugin == nil {

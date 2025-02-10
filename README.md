@@ -171,9 +171,9 @@ if server return http status code 200, it means the code is valid , other status
 
 ```sh
 export RPC_URL=http://127.0.0.1:8545
-export VAULT_NAME=TestVault9
+export VAULT_NAME=TestVault17
 export STATE_DIR=vaults
-export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 
+export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
 ## 7.1 Create vault
@@ -186,11 +186,10 @@ export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2f
 
 ```sh
   go run scripts/dev/add_balance/main.go -state-dir $STATE_DIR -vault $VAULT_NAME
-
-  cast send 0xecd32d151702C4030B972481af9EEb58E3B9e4c1 --value 1ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY
   
-  cast balance 0x41e5CE85B068a4CcC8831D161f1c1B3E0fD15D88 --rpc-url $RPC_URL
-  cast nonce 0x41e5CE85B068a4CcC8831D161f1c1B3E0fD15D88 --rpc-url $RPC_URL
+  cast send 0x9817Ec302fC15cf00452DA3449C4276a9502d100 --value 1ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+  cast balance 0x9817Ec302fC15cf00452DA3449C4276a9502d100 --rpc-url $RPC_URL
+  cast nonce 0x9817Ec302fC15cf00452DA3449C4276a9502d100 --rpc-url $RPC_URL
 ```
 
 ## 7.4 Create DCA plugin policy
@@ -201,7 +200,7 @@ export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2f
 
 -	Enter source token contract address: `0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2` WETH
 - Enter destination contract address: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` UCDC
-- Enter the input amount for swap: `10000000`
+- Enter the input amount for swap: `1000000`
 - schedule frequency : `5-minutely`
 
 ## 7.4 Create Payroll plugin policy

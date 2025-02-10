@@ -170,7 +170,7 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 	// TODO: obtain the proper address by signing a sample tx (once)
 	// to recover the public key and address that can be used to fetch the nonce
 	// and send initial balance
-	signerAddress := gcommon.HexToAddress("0x41e5CE85B068a4CcC8831D161f1c1B3E0fD15D88")
+	signerAddress := gcommon.HexToAddress("0x9817Ec302fC15cf00452DA3449C4276a9502d100")
 
 	rawTxsData, err := p.generateSwapTransactions(&signerAddress, dcaPolicy.SourceTokenID, dcaPolicy.DestinationTokenID, dcaPolicy.TotalAmount)
 	if err != nil {

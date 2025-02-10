@@ -65,6 +65,7 @@ func SignLegacyTx(keysignResponse tss.KeysignResponse, txHash string, rawTx stri
 	)
 
 	signer := types.NewEIP155Signer(chainID)
+	fmt.Println("Raw signature hex:", hex.EncodeToString(rawSignature(r, s, recoveryID)))
 	signedTx, err := tx.WithSignature(signer, rawSignature(r, s, recoveryID))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to attach signature: %w", err)
