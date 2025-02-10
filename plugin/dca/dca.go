@@ -167,12 +167,17 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 
 	// build transactions
 
-	// TODO: obtain the proper address by signing a sample tx (once)
-	// to recover the public key and address that can be used to fetch the nonce
-	// and send initial balance
-	signerAddress := gcommon.HexToAddress("0x9817Ec302fC15cf00452DA3449C4276a9502d100")
+	// TODO: refactor the hardcoded values
+	derivePath := "m/44'/60'/0'/0/0"                                                       // ethereum
+	hexChainCode := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"     // vault's chain code
+	hexEncryptionKey := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" // vault's encryption key
 
-	rawTxsData, err := p.generateSwapTransactions(&signerAddress, dcaPolicy.SourceTokenID, dcaPolicy.DestinationTokenID, dcaPolicy.TotalAmount)
+	signerAddress, err := uniswap.DeriveAddress(policy.PublicKey, hexChainCode, derivePath)
+	if err != nil {
+		return []types.PluginKeysignRequest{}, fmt.Errorf("failed to derive address: %v", err)
+	}
+
+	rawTxsData, err := p.generateSwapTransactions(signerAddress, dcaPolicy.SourceTokenID, dcaPolicy.DestinationTokenID, dcaPolicy.TotalAmount)
 	if err != nil {
 		return []types.PluginKeysignRequest{}, fmt.Errorf("failed to generate transaction hash: %v", err)
 	}
@@ -184,8 +189,8 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 				PublicKey:        policy.PublicKey,
 				Messages:         []string{hex.EncodeToString(data.TxHash)},
 				SessionID:        uuid.New().String(),
-				HexEncryptionKey: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", // TODO
-				DerivePath:       "m/44/60/0/0/0",
+				HexEncryptionKey: hexEncryptionKey,
+				DerivePath:       derivePath,
 				IsECDSA:          true,                   // TODO
 				VaultPassword:    "your-secure-password", // TODO
 				StartSession:     false,

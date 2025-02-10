@@ -171,9 +171,9 @@ if server return http status code 200, it means the code is valid , other status
 
 ```sh
 export RPC_URL=http://127.0.0.1:8545
-export VAULT_NAME=TestVault17
+export VAULT_NAME=TestVault20
 export STATE_DIR=vaults
-export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 # from the local ethereum network
 ```
 
 ## 7.1 Create vault
@@ -185,11 +185,9 @@ export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2f
 ## 7.2 Init vault balance
 
 ```sh
-  go run scripts/dev/add_balance/main.go -state-dir $STATE_DIR -vault $VAULT_NAME
-  
-  cast send 0x9817Ec302fC15cf00452DA3449C4276a9502d100 --value 1ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY
-  cast balance 0x9817Ec302fC15cf00452DA3449C4276a9502d100 --rpc-url $RPC_URL
-  cast nonce 0x9817Ec302fC15cf00452DA3449C4276a9502d100 --rpc-url $RPC_URL
+  cast send 0x564Ca35975C53125F2B6F916710c317F92aA9C2e --value 1ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+  cast balance 0x564Ca35975C53125F2B6F916710c317F92aA9C2e --rpc-url $RPC_URL
+  cast nonce 0x564Ca35975C53125F2B6F916710c317F92aA9C2e --rpc-url $RPC_URL
 ```
 
 ## 7.4 Create DCA plugin policy
@@ -215,4 +213,3 @@ Enter recipients and amounts one by one - enter 'done' when finished
 - Enter the amount for this recipient: `1000`
 - `done`
 - schedule frequency : `5-minutely`
-
