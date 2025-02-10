@@ -185,9 +185,10 @@ export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2f
 ## 7.2 Init vault balance
 
 ```sh
-  cast send 0x564Ca35975C53125F2B6F916710c317F92aA9C2e --value 1ether --rpc-url $RPC_URL --private-key $PRIVATE_KEY
-  cast balance 0x564Ca35975C53125F2B6F916710c317F92aA9C2e --rpc-url $RPC_URL
-  cast nonce 0x564Ca35975C53125F2B6F916710c317F92aA9C2e --rpc-url $RPC_URL
+  go run scripts/dev/add_balance/main.go -state-dir $STATE_DIR -vault $VAULT_NAME
+
+  cast balance "0x..." --rpc-url $RPC_URL
+  cast nonce "0x..." --rpc-url $RPC_URL
 ```
 
 ## 7.4 Create DCA plugin policy

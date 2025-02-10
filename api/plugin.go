@@ -91,7 +91,6 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 	if txHash != req.Messages[0] {
 		return fmt.Errorf("message hash does not match transaction hash. expected %s, got %s", txHash, req.Messages[0])
 	}
-	s.logger.Info("Transaction hash", txHash)
 
 	// Reuse existing signing logic
 	result, err := s.redis.Get(c.Request().Context(), req.SessionID)
@@ -118,7 +117,7 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 	}
 
 	req.StartSession = false
-	req.Parties = []string{"1", "2"}
+	req.Parties = []string{common.PluginPartyID, common.VerifierPartyID}
 
 	buf, err := json.Marshal(req)
 	if err != nil {

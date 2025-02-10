@@ -2,7 +2,6 @@ package uniswap
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math/big"
@@ -28,7 +27,7 @@ func (uc *Client) GetRouterAddress() *common.Address {
 	return uc.cfg.routerAddress
 }
 
-func (uc *Client) MintWETH(signerAddress *common.Address, amount *big.Int, tokenAddress common.Address) ([]byte, []byte, error) {
+func (uc *Client) MintWETH(chainID *big.Int, signerAddress *common.Address, amount *big.Int, tokenAddress common.Address) ([]byte, []byte, error) {
 	wethABI := `[{"name":"deposit","type":"function","stateMutability":"payable"}]`
 
 	parsedABI, err := abi.JSON(strings.NewReader(wethABI))
@@ -44,12 +43,11 @@ func (uc *Client) MintWETH(signerAddress *common.Address, amount *big.Int, token
 	if err != nil {
 		return nil, nil, err
 	}
-	// TODO: use locking mechanism
+	// TODO: use proper nonce management
 	nonce, err := uc.cfg.rpcClient.PendingNonceAt(context.Background(), *signerAddress)
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Println("SIGNER ADDRESS", signerAddress.Hex(), "ACTUAL NONCE: ", nonce)
 	gasLimit, err := uc.cfg.rpcClient.EstimateGas(context.Background(), ethereum.CallMsg{
 		To:   &tokenAddress,
 		Data: data,
@@ -60,7 +58,7 @@ func (uc *Client) MintWETH(signerAddress *common.Address, amount *big.Int, token
 	gasLimit += uc.cfg.gasLimitBuffer
 
 	tx := types.NewTransaction(nonce, tokenAddress, amount, gasLimit, gasPrice, data)
-	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx)
+	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx, chainID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,7 +66,7 @@ func (uc *Client) MintWETH(signerAddress *common.Address, amount *big.Int, token
 	return hash, rawTx, err
 }
 
-func (uc *Client) ApproveERC20Token(signerAddress *common.Address, tokenAddress, spenderAddress common.Address, amount *big.Int) ([]byte, []byte, error) {
+func (uc *Client) ApproveERC20Token(chainID *big.Int, signerAddress *common.Address, tokenAddress, spenderAddress common.Address, amount *big.Int) ([]byte, []byte, error) {
 	tokenABI := `[
 		{
 			"name": "approve",
@@ -100,7 +98,7 @@ func (uc *Client) ApproveERC20Token(signerAddress *common.Address, tokenAddress,
 	if err != nil {
 		return nil, nil, err
 	}
-	// TODO: use locking mechanism
+	// TODO: use proper nonce management
 	nonce, err := uc.cfg.rpcClient.PendingNonceAt(context.Background(), *signerAddress)
 	if err != nil {
 		return nil, nil, err
@@ -118,7 +116,7 @@ func (uc *Client) ApproveERC20Token(signerAddress *common.Address, tokenAddress,
 	}
 	gasLimit += uc.cfg.gasLimitBuffer
 	tx := types.NewTransaction(nonce, tokenAddress, amount, gasLimit, gasPrice, approveData)
-	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx)
+	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx, chainID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,7 +124,7 @@ func (uc *Client) ApproveERC20Token(signerAddress *common.Address, tokenAddress,
 	return hash, rawTx, err
 }
 
-func (uc *Client) SwapTokens(signerAddress *common.Address, amountIn, amountOutMin *big.Int, path []common.Address) ([]byte, []byte, error) {
+func (uc *Client) SwapTokens(chainID *big.Int, signerAddress *common.Address, amountIn, amountOutMin *big.Int, path []common.Address) ([]byte, []byte, error) {
 	log.Println("Swapping tokens...")
 	routerABI := `[
 		{
@@ -167,7 +165,7 @@ func (uc *Client) SwapTokens(signerAddress *common.Address, amountIn, amountOutM
 	if err != nil {
 		return nil, nil, err
 	}
-	// TODO: use locking mechanism
+	// TODO: use proper nonce management
 	nonce, err := uc.cfg.rpcClient.PendingNonceAt(context.Background(), *signerAddress)
 	if err != nil {
 		return nil, nil, err
@@ -178,7 +176,7 @@ func (uc *Client) SwapTokens(signerAddress *common.Address, amountIn, amountOutM
 	}
 
 	tx := types.NewTransaction(nonce, *uc.cfg.routerAddress, amountIn, uc.cfg.swapGasLimit, gasPrice, swapData)
-	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx)
+	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx, chainID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -285,16 +283,7 @@ func (uc *Client) GetExpectedAmountOut(amountIn *big.Int, path []common.Address)
 	return amountsOut[len(amountsOut)-1], nil
 }
 
-func (uc *Client) rlpUnsignedTxAndHash(tx *types.Transaction) ([]byte, []byte, error) {
-	// rawTx, err := tx.MarshalBinary()
-	// if err != nil {
-	// 	return nil, nil, fmt.Errorf("failed to marshal transaction: %v", err)
-	// }
-	// txHash := tx.Hash().Bytes()
-
-	// TODO: get chain ID from config
-	chainID := big.NewInt(1)
-
+func (uc *Client) rlpUnsignedTxAndHash(tx *types.Transaction, chainID *big.Int) ([]byte, []byte, error) {
 	// post EIP-155 transaction
 	rawTx, err := rlp.EncodeToBytes([]interface{}{
 		tx.Nonce(),
@@ -313,9 +302,6 @@ func (uc *Client) rlpUnsignedTxAndHash(tx *types.Transaction) ([]byte, []byte, e
 
 	signer := types.NewEIP155Signer(chainID)
 	txHash := signer.Hash(tx).Bytes()
-
-	log.Println("Tx Hash: ", hex.EncodeToString(txHash))
-	log.Println("Raw Tx: ", hex.EncodeToString(rawTx))
 
 	return txHash, rawTx, nil
 }

@@ -51,6 +51,7 @@ func SignLegacyTx(keysignResponse tss.KeysignResponse, txHash string, rawTx stri
 	}
 	pubKeyBytes := crypto.FromECDSAPub(pubKey)
 	address := crypto.PubkeyToAddress(*pubKey)
+	// TODO: remove the logs
 	log.Println("Recovered public key: ", hex.EncodeToString(pubKeyBytes))
 	log.Println("Recovered address: ", address)
 
@@ -76,9 +77,6 @@ func SignLegacyTx(keysignResponse tss.KeysignResponse, txHash string, rawTx stri
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to recover sender: %w", err)
 	}
-	fmt.Println("Sender address: ", sender.Hex())
-	fmt.Println("Original tx hash: ", signedTx.Hash().Hex()[2:])
-	fmt.Println("Signer tx Hash: ", signer.Hash(signedTx).Hex()[2:])
 
 	return signedTx, &sender, nil
 }

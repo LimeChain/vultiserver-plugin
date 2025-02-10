@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
+	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/internal/types"
 	"github.com/vultisig/vultisigner/storage"
 	"github.com/vultisig/vultisigner/uniswap"
@@ -160,24 +161,29 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 	if err != nil {
 		return txs, fmt.Errorf("failed to validate plugin policy: %v", err)
 	}
+
 	var dcaPolicy types.DCAPolicy
 	if err := json.Unmarshal(policy.Policy, &dcaPolicy); err != nil {
 		return txs, fmt.Errorf("fail to unmarshal dca policy, err: %w", err)
 	}
-
 	// build transactions
-
-	// TODO: refactor the hardcoded values
+	// TODO: get theses values from the vault
 	derivePath := "m/44'/60'/0'/0/0"                                                       // ethereum
 	hexChainCode := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"     // vault's chain code
 	hexEncryptionKey := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" // vault's encryption key
+	vaultPassword := "your-secure-password"                                                // vault's password
 
-	signerAddress, err := uniswap.DeriveAddress(policy.PublicKey, hexChainCode, derivePath)
+	signerAddress, err := common.DeriveAddress(policy.PublicKey, hexChainCode, derivePath)
 	if err != nil {
 		return []types.PluginKeysignRequest{}, fmt.Errorf("failed to derive address: %v", err)
 	}
 
-	rawTxsData, err := p.generateSwapTransactions(signerAddress, dcaPolicy.SourceTokenID, dcaPolicy.DestinationTokenID, dcaPolicy.TotalAmount)
+	chainID, ok := big.NewInt(0).SetString(dcaPolicy.ChainID, 10)
+	if !ok {
+		return []types.PluginKeysignRequest{}, fmt.Errorf("failed to parse chain id: %v", err)
+	}
+
+	rawTxsData, err := p.generateSwapTransactions(chainID, signerAddress, dcaPolicy.SourceTokenID, dcaPolicy.DestinationTokenID, dcaPolicy.TotalAmount)
 	if err != nil {
 		return []types.PluginKeysignRequest{}, fmt.Errorf("failed to generate transaction hash: %v", err)
 	}
@@ -191,10 +197,10 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 				SessionID:        uuid.New().String(),
 				HexEncryptionKey: hexEncryptionKey,
 				DerivePath:       derivePath,
-				IsECDSA:          true,                   // TODO
-				VaultPassword:    "your-secure-password", // TODO
+				IsECDSA:          true, // TODO
+				VaultPassword:    vaultPassword,
 				StartSession:     false,
-				Parties:          []string{"1", "2"},
+				Parties:          []string{common.PluginPartyID, common.VerifierPartyID},
 			},
 			Transaction: hex.EncodeToString(data.RlpTxBytes),
 			PluginID:    policy.PluginID,
@@ -211,7 +217,7 @@ type RawTxData struct {
 	RlpTxBytes []byte
 }
 
-func (p *DCAPlugin) generateSwapTransactions(signerAddress *gcommon.Address, srcToken, destToken string, strAmount string) ([]RawTxData, error) {
+func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gcommon.Address, srcToken, destToken string, strAmount string) ([]RawTxData, error) {
 	srcTokenAddress := gcommon.HexToAddress(srcToken)
 	destTokenAddress := gcommon.HexToAddress(destToken)
 	tokensPair := []gcommon.Address{srcTokenAddress, destTokenAddress}
@@ -232,39 +238,37 @@ func (p *DCAPlugin) generateSwapTransactions(signerAddress *gcommon.Address, src
 	// TODO: validate the price range (if specified)
 
 	// calculate output amount with slippage
-	// amountOutMin := p.uniswapClient.CalculateAmountOutMin(expectedAmount, 1.0)
+	amountOutMin := p.uniswapClient.CalculateAmountOutMin(expectedAmount, 1.0)
 
+	// TODO: mint + approve once, during policy configuration,
+	// so there will be only one transaction to sign each time
 	rawTxsData := []RawTxData{}
-
-	// TODO: mint + approve once during policy configuration
 
 	// mint WETH
 	log.Println("Minting WETH...")
 	logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
-	txHash, rawTx, err := p.uniswapClient.MintWETH(signerAddress, amount, srcTokenAddress)
+	txHash, rawTx, err := p.uniswapClient.MintWETH(chainID, signerAddress, amount, srcTokenAddress)
 	if err != nil {
 		log.Fatalf("Failed to mint WETH: %v", err)
 	}
 	logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
 	rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
 
-	// TODO
+	// approve Router to spend input token
+	log.Printf("Approving Uniswap Router to spend %s...", srcTokenAddress.Hex())
+	txHash, rawTx, err = p.uniswapClient.ApproveERC20Token(chainID, signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), amount)
+	if err != nil {
+		log.Fatalf("Failed to approve token: %v", err)
+	}
+	rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
 
-	// // approve Router to spend input token
-	// log.Printf("Approving Uniswap Router to spend %s...", srcTokenAddress.Hex())
-	// txHash, rawTx, err = p.uniswapClient.ApproveERC20Token(signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), amount)
-	// if err != nil {
-	// 	log.Fatalf("Failed to approve token: %v", err)
-	// }
-	// rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
-
-	// // swap tokens
-	// txHash, rawTx, err = p.uniswapClient.SwapTokens(signerAddress, amount, amountOutMin, tokensPair)
-	// if err != nil {
-	// 	log.Fatalf("Failed to swap tokens: %v", err)
-	// }
-	// logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
-	// rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
+	// swap tokens
+	txHash, rawTx, err = p.uniswapClient.SwapTokens(chainID, signerAddress, amount, amountOutMin, tokensPair)
+	if err != nil {
+		log.Fatalf("Failed to swap tokens: %v", err)
+	}
+	logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
+	rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
 
 	return rawTxsData, nil
 }

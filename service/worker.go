@@ -14,7 +14,6 @@ import (
 
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -22,6 +21,8 @@ import (
 	vaultType "github.com/vultisig/commondata/go/vultisig/vault/v1"
 	"github.com/vultisig/mobile-tss-lib/tss"
 
+	gcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/contexthelper"
 	"github.com/vultisig/vultisigner/internal/signing"
@@ -75,7 +76,7 @@ func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Cl
 			if err != nil {
 				return nil, err
 			}
-			uniswapV2RouterAddress := common.HexToAddress(cfg.Server.Plugin.Eth.Uniswap.V2Router)
+			uniswapV2RouterAddress := gcommon.HexToAddress(cfg.Server.Plugin.Eth.Uniswap.V2Router)
 			uniswapCfg := uniswap.NewConfig(
 				rpcClient,
 				&uniswapV2RouterAddress,
@@ -462,7 +463,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 
 		// prepare local sign request
 		signRequest.KeysignRequest.StartSession = true
-		// signRequest.KeysignRequest.Parties = []string{"1", "2"}
+		signRequest.KeysignRequest.Parties = []string{common.PluginPartyID, common.VerifierPartyID}
 		buf, err := json.Marshal(signRequest.KeysignRequest)
 		if err != nil {
 			s.logger.Errorf("Failed to marshal local sign request: %v", err)
@@ -515,11 +516,12 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			return fmt.Errorf("failed to unmarshal signatures: %w", err)
 		}
 
-		// TODO: get it from the config
+		// TODO: get chainID from policy
 		chainID := big.NewInt(1)
 
 		// TODO: do it for each tx
 		txHash := signRequest.Messages[0]
+
 		signedTx, _, err := signing.SignLegacyTx(keysignResponse[txHash], txHash, signRequest.Transaction, chainID)
 		if err != nil {
 			s.logger.Error("Failed to sign transaction: ", err)
