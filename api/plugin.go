@@ -266,7 +266,6 @@ func (s *Server) UpdatePluginPolicyById(c echo.Context) error {
 		return fmt.Errorf("failed to insert policy: %w", err)
 	}
 
-	// todo check this
 	if err := s.db.UpdateTriggerExecution(policy.ID); err != nil {
 		s.logger.Errorf("Failed to update last execution: %v", err)
 	}
