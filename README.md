@@ -171,9 +171,9 @@ if server return http status code 200, it means the code is valid , other status
 
 ```sh
 export RPC_URL=http://127.0.0.1:8545
-export VAULT_NAME=TestVault20
+export VAULT_NAME=TestVault26
 export STATE_DIR=vaults
-export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 # from the local ethereum network
+export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 
 ```
 
 ## 7.1 Create vault
@@ -184,14 +184,25 @@ export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2f
 
 ## 7.2 Init vault balance
 
+Send some amount of native ETH to the vault
 ```sh
   go run scripts/dev/add_balance/main.go -state-dir $STATE_DIR -vault $VAULT_NAME
+```
 
-  cast balance "0x..." --rpc-url $RPC_URL
-  cast nonce "0x..." --rpc-url $RPC_URL
+Mint some amount of WETH
+```sh
+```
+
+```sh
+  cast balance 0x577D1Cd9F904F95bA56f0CE9D8e8b6a1a72577ec --rpc-url $RPC_URL
+  cast nonce 0x577D1Cd9F904F95bA56f0CE9D8e8b6a1a72577ec --rpc-url $RPC_URL
 ```
 
 ## 7.4 Create DCA plugin policy
+
+Approve the source token amount
+```sh
+```
 
 ```sh
   go run scripts/dev/create_dca_policy/main.go -state-dir $STATE_DIR -vault $VAULT_NAME
@@ -199,7 +210,7 @@ export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2f
 
 -	Enter source token contract address: `0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2` WETH
 - Enter destination contract address: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` UCDC
-- Enter the input amount for swap: `1000000`
+- Enter the input amount for swap: `100000000000000000`
 - schedule frequency : `5-minutely`
 
 ## 7.4 Create Payroll plugin policy

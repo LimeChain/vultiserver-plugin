@@ -7,6 +7,13 @@ server:
     dsn: postgres://myuser:mypassword@localhost:5432/vs-plugins-vultiserver?sslmode=disable
   vaults_file_path: /tmp/vultisigner/server/vaults
   mode: vultiserver
+  plugin:
+    type: dca
+    eth:
+      rpc: http://127.0.0.1:8545
+      uniswap:
+        v2_router: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
+        deadline: 5 # minutes
 
 relay:
   server: https://api.vultisig.com/router

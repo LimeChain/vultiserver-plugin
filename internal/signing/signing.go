@@ -3,13 +3,11 @@ package signing
 import (
 	"encoding/hex"
 	"fmt"
-	"log"
 	"math/big"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/vultisig/mobile-tss-lib/tss"
 )
 
@@ -39,21 +37,6 @@ func SignLegacyTx(keysignResponse tss.KeysignResponse, txHash string, rawTx stri
 		return nil, nil, fmt.Errorf("failed to parse recovery ID: %w", err)
 	}
 	recoveryID := uint8(recID) // 0 or 1
-
-	// recover public key and address
-	txHashBytes, err := hex.DecodeString(txHash)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode transaction hash: %w", err)
-	}
-	pubKey, err := crypto.SigToPub(txHashBytes, rawSignature(r, s, uint8(recoveryID)))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to recover public key: %w", err)
-	}
-	pubKeyBytes := crypto.FromECDSAPub(pubKey)
-	address := crypto.PubkeyToAddress(*pubKey)
-	// TODO: remove the logs
-	log.Println("Recovered public key: ", hex.EncodeToString(pubKeyBytes))
-	log.Println("Recovered address: ", address)
 
 	// Manually reconstruct the unsigned transaction to ensure consistency
 	tx := types.NewTransaction(

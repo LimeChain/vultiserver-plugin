@@ -7,13 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
-	"math/big"
 	"net/http"
 	"time"
 
 	"github.com/DataDog/datadog-go/statsd"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -25,7 +22,6 @@ import (
 	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/contexthelper"
-	"github.com/vultisig/vultisigner/internal/signing"
 	"github.com/vultisig/vultisigner/internal/tasks"
 	"github.com/vultisig/vultisigner/internal/types"
 	"github.com/vultisig/vultisigner/plugin"
@@ -64,7 +60,10 @@ func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Cl
 		logger.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	var rpcClient *ethclient.Client
+	rpcClient, err := ethclient.Dial(cfg.Server.Plugin.Eth.Rpc)
+	if err != nil {
+		return nil, err
+	}
 
 	var plugin plugin.Plugin
 	if cfg.Server.Mode == "pluginserver" {
@@ -72,10 +71,6 @@ func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Cl
 		case "payroll":
 			plugin = payroll.NewPayrollPlugin(db)
 		case "dca":
-			rpcClient, err = ethclient.Dial(cfg.Server.Plugin.Eth.Rpc)
-			if err != nil {
-				return nil, err
-			}
 			uniswapV2RouterAddress := gcommon.HexToAddress(cfg.Server.Plugin.Eth.Uniswap.V2Router)
 			uniswapCfg := uniswap.NewConfig(
 				rpcClient,
@@ -507,38 +502,23 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			s.logger.Errorf("Failed to update last execution: %v", err)
 		}
 
-		s.logger.Infof("Plugin signing test complete. Status: %d, Response: %s", signResp.StatusCode, string(respBody))
-
-		// Sign and broadcast txs
-		var keysignResponse map[string]tss.KeysignResponse
-		err = json.Unmarshal(result, &keysignResponse)
-		if err != nil {
+		var signatures map[string]tss.KeysignResponse
+		if err := json.Unmarshal(result, &signatures); err != nil {
+			s.logger.Errorf("Failed to unmarshal signatures: %v", err)
 			return fmt.Errorf("failed to unmarshal signatures: %w", err)
 		}
 
-		// TODO: get chainID from policy
-		chainID := big.NewInt(1)
-
-		// TODO: do it for each tx
-		txHash := signRequest.Messages[0]
-
-		signedTx, _, err := signing.SignLegacyTx(keysignResponse[txHash], txHash, signRequest.Transaction, chainID)
-		if err != nil {
-			s.logger.Error("Failed to sign transaction: ", err)
+		var signature tss.KeysignResponse
+		for _, sig := range signatures {
+			signature = sig
+			break
 		}
 
-		err = s.rpcClient.SendTransaction(context.Background(), signedTx)
+		err = s.plugin.SigningComplete(ctx, signature, signRequest, policy)
 		if err != nil {
-			s.logger.Error("Failed to send transaction: ", err)
-			return err
+			s.logger.Errorf("Failed to complete signing: %v", err)
+			return fmt.Errorf("failed to complete signing: %w", err)
 		}
-		s.logger.Info("Transaction sent: ", signedTx.Hash().Hex())
-
-		receipt, err := bind.WaitMined(context.Background(), s.rpcClient, signedTx)
-		if err != nil {
-			return err
-		}
-		log.Printf("Transaction receipt status: %v", receipt.Status)
 	}
 
 	return nil

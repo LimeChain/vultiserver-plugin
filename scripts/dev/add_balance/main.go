@@ -77,7 +77,7 @@ func main() {
 		panic(err)
 	}
 	// 1 eth
-	amount := big.NewInt(1000000000000000000)
+	amount := big.NewInt(9e18)
 
 	gasPrice, err := rpcClient.SuggestGasPrice(context.Background())
 	if err != nil {

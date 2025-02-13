@@ -1,6 +1,7 @@
 package dca
 
 import (
+	"context"
 	"embed"
 	"encoding/hex"
 	"encoding/json"
@@ -9,11 +10,16 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
+	"github.com/vultisig/mobile-tss-lib/tss"
 	"github.com/vultisig/vultisigner/common"
+	"github.com/vultisig/vultisigner/config"
+	"github.com/vultisig/vultisigner/internal/signing"
 	"github.com/vultisig/vultisigner/internal/types"
 	"github.com/vultisig/vultisigner/storage"
 	"github.com/vultisig/vultisigner/uniswap"
@@ -27,21 +33,65 @@ const (
 
 type DCAPlugin struct {
 	uniswapClient *uniswap.Client
+	rpcClient     *ethclient.Client
 	db            storage.DatabaseStorage
 	logger        *logrus.Logger
 }
 
 func NewDCAPlugin(uniswapCfg *uniswap.Config, db storage.DatabaseStorage, logger *logrus.Logger) *DCAPlugin {
+	pluginConfig, err := config.ReadConfig("config-plugin")
+	if err != nil {
+		panic(err)
+	}
+	rpcClient, err := ethclient.Dial(pluginConfig.Server.Plugin.Eth.Rpc)
+	if err != nil {
+		panic(err)
+	}
+
 	uniswapClient, err := uniswap.NewClient(uniswapCfg)
 	if err != nil {
 		log.Fatalf("Failed to initialize Uniswap client: %v", err)
 	}
 
-	return &DCAPlugin{uniswapClient, db, logger}
+	return &DCAPlugin{
+		uniswapClient: uniswapClient,
+		rpcClient:     rpcClient,
+		db:            db,
+		logger:        logger,
+	}
 }
 
 func (p *DCAPlugin) SignPluginMessages(e echo.Context) error {
 	p.logger.Warn("DCA: SIGN PLUGIN MESSAGES")
+	return nil
+}
+
+func (p *DCAPlugin) SigningComplete(ctx context.Context, signature tss.KeysignResponse, signRequest types.PluginKeysignRequest, policy types.PluginPolicy) error {
+	var dcaPolicy types.DCAPolicy
+	if err := json.Unmarshal(policy.Policy, &dcaPolicy); err != nil {
+		return fmt.Errorf("fail to unmarshal dca policy, err: %w", err)
+	}
+
+	chainID, ok := big.NewInt(0).SetString(dcaPolicy.ChainID, 10)
+	if !ok {
+		return fmt.Errorf("failed to parse chain id")
+	}
+	txHash := signRequest.Messages[0]
+	signedTx, _, err := signing.SignLegacyTx(signature, txHash, signRequest.Transaction, chainID)
+	if err != nil {
+		p.logger.Error("Failed to sign transaction: ", err)
+	}
+	err = p.rpcClient.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		p.logger.Error("Failed to send transaction: ", err)
+		return err
+	}
+	p.logger.Info("Transaction sent: ", signedTx.Hash().Hex())
+	receipt, err := bind.WaitMined(context.Background(), p.rpcClient, signedTx)
+	if err != nil {
+		return err
+	}
+	p.logger.Info("Transaction receipt status: ", receipt.Status)
 	return nil
 }
 
@@ -189,7 +239,6 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 	}
 
 	for _, data := range rawTxsData {
-		// Create signing request
 		signRequest := types.PluginKeysignRequest{
 			KeysignRequest: types.KeysignRequest{
 				PublicKey:        policy.PublicKey,
@@ -222,48 +271,55 @@ func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gc
 	destTokenAddress := gcommon.HexToAddress(destToken)
 	tokensPair := []gcommon.Address{srcTokenAddress, destTokenAddress}
 
-	amount, ok := new(big.Int).SetString(strAmount, 10)
+	swapAmountIn, ok := new(big.Int).SetString(strAmount, 10)
 	if !ok {
 		return []RawTxData{}, fmt.Errorf("failed to parse amount")
 	}
-	log.Print("Amount: ", amount.String())
 
 	// fetch token pair amount out
-	expectedAmount, err := p.uniswapClient.GetExpectedAmountOut(amount, tokensPair)
+	expectedAmountOut, err := p.uniswapClient.GetExpectedAmountOut(swapAmountIn, tokensPair)
 	if err != nil {
 		log.Fatalf("Failed to get expected amount out: %v", err)
 	}
-	log.Println("Expected amount out:", expectedAmount.String())
+	log.Println("Expected amount out:", expectedAmountOut.String())
+
+	slippagePercentage := 1.0
+	amountOutMin := p.uniswapClient.CalculateAmountOutMin(expectedAmountOut, slippagePercentage)
 
 	// TODO: validate the price range (if specified)
 
-	// calculate output amount with slippage
-	amountOutMin := p.uniswapClient.CalculateAmountOutMin(expectedAmount, 1.0)
-
-	// TODO: mint + approve once, during policy configuration,
-	// so there will be only one transaction to sign each time
 	rawTxsData := []RawTxData{}
+
+	// TODO:
+	// remove, it is not responsibility of the plugin
+	// the user should have the coresponding amount of WETH
+	// in their wallet
 
 	// mint WETH
 	log.Println("Minting WETH...")
 	logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
-	txHash, rawTx, err := p.uniswapClient.MintWETH(chainID, signerAddress, amount, srcTokenAddress)
+	txHash, rawTx, err := p.uniswapClient.MintWETH(chainID, signerAddress, swapAmountIn, srcTokenAddress)
 	if err != nil {
 		log.Fatalf("Failed to mint WETH: %v", err)
 	}
 	logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
 	rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
 
+	// TODO:
+	// approve should be done by the Vault user, during policy
+	// configuration, since it is not responsibility of the plugin
+	// to approve tokens so there will be only one transaction to sign
+
 	// approve Router to spend input token
 	log.Printf("Approving Uniswap Router to spend %s...", srcTokenAddress.Hex())
-	txHash, rawTx, err = p.uniswapClient.ApproveERC20Token(chainID, signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), amount)
+	txHash, rawTx, err = p.uniswapClient.ApproveERC20Token(chainID, signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), swapAmountIn)
 	if err != nil {
 		log.Fatalf("Failed to approve token: %v", err)
 	}
 	rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
 
 	// swap tokens
-	txHash, rawTx, err = p.uniswapClient.SwapTokens(chainID, signerAddress, amount, amountOutMin, tokensPair)
+	txHash, rawTx, err = p.uniswapClient.SwapTokens(chainID, signerAddress, swapAmountIn, amountOutMin, tokensPair)
 	if err != nil {
 		log.Fatalf("Failed to swap tokens: %v", err)
 	}

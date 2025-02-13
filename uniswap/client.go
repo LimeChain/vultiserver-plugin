@@ -103,6 +103,8 @@ func (uc *Client) ApproveERC20Token(chainID *big.Int, signerAddress *common.Addr
 	if err != nil {
 		return nil, nil, err
 	}
+	nonce += 1
+
 	gasPrice, err := uc.cfg.rpcClient.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, nil, err
@@ -115,7 +117,7 @@ func (uc *Client) ApproveERC20Token(chainID *big.Int, signerAddress *common.Addr
 		return nil, nil, err
 	}
 	gasLimit += uc.cfg.gasLimitBuffer
-	tx := types.NewTransaction(nonce, tokenAddress, amount, gasLimit, gasPrice, approveData)
+	tx := types.NewTransaction(nonce, tokenAddress, big.NewInt(0), gasLimit, gasPrice, approveData)
 	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx, chainID)
 	if err != nil {
 		return nil, nil, err
@@ -170,12 +172,14 @@ func (uc *Client) SwapTokens(chainID *big.Int, signerAddress *common.Address, am
 	if err != nil {
 		return nil, nil, err
 	}
+	nonce += 2
+
 	gasPrice, err := uc.cfg.rpcClient.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	tx := types.NewTransaction(nonce, *uc.cfg.routerAddress, amountIn, uc.cfg.swapGasLimit, gasPrice, swapData)
+	tx := types.NewTransaction(nonce, *uc.cfg.routerAddress, big.NewInt(0), uc.cfg.swapGasLimit, gasPrice, swapData)
 	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx, chainID)
 	if err != nil {
 		return nil, nil, err
