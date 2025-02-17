@@ -57,7 +57,7 @@ func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Cl
 
 	db, err := postgres.NewPostgresBackend(false, cfg.Server.Database.DSN)
 	if err != nil {
-		logger.Fatalf("Failed to connect to database: %v", err)
+		return nil, fmt.Errorf("fail to connect to database: %w", err)
 	}
 
 	rpcClient, err := ethclient.Dial(cfg.Server.Plugin.Eth.Rpc)
@@ -79,8 +79,10 @@ func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Cl
 				50000,   // TODO: config
 				time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
 			)
-
-			plugin = dca.NewDCAPlugin(uniswapCfg, db, logger)
+			plugin, err = dca.NewDCAPlugin(uniswapCfg, db, logger)
+			if err != nil {
+				return nil, fmt.Errorf("fail to initialize DCA plugin: %w", err)
+			}
 		default:
 			logger.Fatalf("Invalid plugin type: %s", cfg.Server.Plugin.Type)
 		}
@@ -396,7 +398,6 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 	}
 
 	for _, signRequest := range signRequests {
-		s.logger.Warn("DCA sign request", signRequest)
 		policyUUID, err := uuid.Parse(signRequest.PolicyID)
 		if err != nil {
 			s.logger.Errorf("Failed to parse policy ID as UUID: %v", err)
@@ -465,7 +466,8 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			return err
 		}
 
-		s.logger.Warn("PLUGIN WORKER: KEYSIGN TASK")
+		s.logger.Debug("PLUGIN WORKER: KEYSIGN TASK")
+
 		// Enqueue TypeKeySign directly
 		ti, err := s.queueClient.Enqueue(
 			asynq.NewTask(tasks.TypeKeySign, buf),
@@ -504,7 +506,6 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 
 		var signatures map[string]tss.KeysignResponse
 		if err := json.Unmarshal(result, &signatures); err != nil {
-			s.logger.Errorf("Failed to unmarshal signatures: %v", err)
 			return fmt.Errorf("failed to unmarshal signatures: %w", err)
 		}
 
@@ -516,8 +517,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 
 		err = s.plugin.SigningComplete(ctx, signature, signRequest, policy)
 		if err != nil {
-			s.logger.Errorf("Failed to complete signing: %v", err)
-			return fmt.Errorf("failed to complete signing: %w", err)
+			return fmt.Errorf("fail to complete signing: %w", err)
 		}
 	}
 

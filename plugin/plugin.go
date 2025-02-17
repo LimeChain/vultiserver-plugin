@@ -13,7 +13,10 @@ type Plugin interface {
 	SignPluginMessages(c echo.Context) error
 	SetupPluginPolicy(policyDoc *types.PluginPolicy) error
 	ValidatePluginPolicy(policyDoc types.PluginPolicy) error
+
+	// TODO: do we actually need this?
 	ConfigurePlugin(c echo.Context) error
+
 	Frontend() embed.FS
 
 	ProposeTransactions(policy types.PluginPolicy) ([]types.PluginKeysignRequest, error)

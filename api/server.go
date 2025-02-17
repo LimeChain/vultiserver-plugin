@@ -95,7 +95,10 @@ func NewServer(port int64,
 				50000,   // TODO: config
 				time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
 			)
-			plugin = dca.NewDCAPlugin(uniswapCfg, db, logger)
+			plugin, err = dca.NewDCAPlugin(uniswapCfg, db, logger)
+			if err != nil {
+				logger.Fatal("fail to initialize DCA plugin: ", err)
+			}
 		default:
 			logger.Fatalf("Invalid plugin type: %s", pluginType)
 		}
@@ -430,7 +433,7 @@ func (s *Server) DeleteVault(c echo.Context) error {
 
 // SignMessages is a handler to process Keysing request
 func (s *Server) SignMessages(c echo.Context) error {
-	s.logger.Warn("VERIFIER SERVER: SIGN MESSAGES")
+	s.logger.Debug("VERIFIER SERVER: SIGN MESSAGES")
 
 	var req types.KeysignRequest
 	if err := c.Bind(&req); err != nil {
