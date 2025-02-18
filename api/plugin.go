@@ -283,15 +283,15 @@ func (s *Server) CreatePluginPolicy(c echo.Context) error {
 		return fmt.Errorf("failed to insert policy: %w", err)
 	}
 
-	// TODO: sync policies and triggers on on both plugin
-	// and verifier servers in a db transaction, rollback
-	// if policy sync fails
-	if err := s.SyncPolicyOnVerifier(policy); err != nil {
-		return fmt.Errorf("failed to sync policy with verifier: %w", err)
-	}
-
 	// TODO: handle trigger updates
 	if s.scheduler != nil {
+		// TODO: sync policies and triggers on on both plugin
+		// and verifier servers in a db transaction, rollback
+		// if policy sync fails
+		if err := s.SyncPolicyOnVerifier(policy); err != nil {
+			return fmt.Errorf("failed to sync policy with verifier: %w", err)
+		}
+
 		if err := s.scheduler.CreateTimeTrigger(policy); err != nil {
 			s.logger.Errorf("Failed to create time trigger: %v", err)
 		}
