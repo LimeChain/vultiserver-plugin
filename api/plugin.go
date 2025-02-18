@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/vultisig/vultisigner/internal/syncer"
 	"net/http"
 	"time"
 
@@ -289,27 +290,87 @@ func (s *Server) CreatePluginPolicy(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	insertedPolicy, err := s.db.InsertPluginPolicy(policy)
+	//insertedPolicy, err := s.db.InsertPluginPolicy(policy)
+	//
+	//if err != nil {
+	//	return fmt.Errorf("failed to insert policy: %w", err)
+	//}
+	//
+	//// TODO: sync policies and triggers on on both plugin
+	//// and verifier servers in a db transaction, rollback
+	//// if policy sync fails
+	//if err := s.SyncPolicyOnVerifier(policy); err != nil {
+	//	return fmt.Errorf("failed to sync policy with verifier: %w", err)
+	//}
+	//
+	//// TODO: handle trigger updates
+	//if s.scheduler != nil {
+	//	if err := s.scheduler.CreateTimeTrigger(policy); err != nil {
+	//		s.logger.Errorf("Failed to create time trigger: %v", err)
+	//	}
+	//}
 
+	// START TRANSACTION
+	tx, err := s.db.Pool().Begin(c.Request().Context())
 	if err != nil {
-		return fmt.Errorf("failed to insert policy: %w", err)
+		err := fmt.Errorf("failed to start transaction: %w", err)
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	// TODO: sync policies and triggers on on both plugin
-	// and verifier servers in a db transaction, rollback
-	// if policy sync fails
-	if err := s.SyncPolicyOnVerifier(policy); err != nil {
-		return fmt.Errorf("failed to sync policy with verifier: %w", err)
+	defer tx.Rollback(c.Request().Context())
+
+	// Insert policy
+	if err := s.db.InsertPluginPolicyTx(c.Request().Context(), tx, policy); err != nil {
+		err := fmt.Errorf("failed to insert plugin policy: %w", err)
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	// TODO: handle trigger updates
+	// Create trigger if scheduler exist
 	if s.scheduler != nil {
-		if err := s.scheduler.CreateTimeTrigger(policy); err != nil {
-			s.logger.Errorf("Failed to create time trigger: %v", err)
+		// Create trigger
+		trigger, err := s.scheduler.CreatePolicyTrigger(policy)
+		if err != nil {
+			err := fmt.Errorf("failed to create policy trigger: %w", err)
+			s.logger.Error(err)
+			return c.JSON(http.StatusInternalServerError, err)
 		}
+
+		if err := s.db.CreateTimeTriggerTx(c.Request().Context(), tx, *trigger); err != nil {
+			err := fmt.Errorf("failed to create time trigger: %w", err)
+			s.logger.Error(err)
+			return c.JSON(http.StatusInternalServerError, err)
+		}
+
 	}
 
-	return c.JSON(http.StatusOK, insertedPolicy)
+	// Prepare sync request
+	syncReq := syncer.SyncRequest{
+		Operation: "CREATE",
+		Policy:    policy,
+	}
+	// sync with verifier
+	resp, err := s.syncer.SyncWithVerifier(c.Request().Context(), &syncReq)
+	if err != nil {
+		err := fmt.Errorf("failed to sync with verifier: %w", err)
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	if !resp.Success {
+		err := fmt.Errorf("failed to sync with verifier: %w", resp.Error)
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	if err := tx.Commit(c.Request().Context()); err != nil {
+		err := fmt.Errorf("failed to commit transaction: %w", err)
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.JSON(http.StatusOK, policy)
 }
 
 // TODO: verify the signature to authorize the operation

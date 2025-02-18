@@ -1,7 +1,10 @@
 package storage
 
 import (
+	"context"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vultisig/vultisigner/internal/types"
 )
 
@@ -21,4 +24,8 @@ type DatabaseStorage interface {
 	CreateTransactionHistory(tx types.TransactionHistory) (uuid.UUID, error)
 	UpdateTransactionStatus(txID uuid.UUID, status types.TransactionStatus, metadata map[string]interface{}) error
 	GetTransactionHistory(policyID uuid.UUID) ([]types.TransactionHistory, error)
+
+	InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) error
+	CreateTimeTriggerTx(ctx context.Context, tx pgx.Tx, trigger types.TimeTrigger) error
+	Pool() *pgxpool.Pool
 }
