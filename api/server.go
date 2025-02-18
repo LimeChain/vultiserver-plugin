@@ -659,3 +659,4 @@ func (s *Server) VerifyCode(c echo.Context) error {
 	}
 	return c.NoContent(http.StatusOK)
 }
+
