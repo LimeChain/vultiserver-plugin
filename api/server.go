@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/vultisig/vultisigner/internal/syncer"
 	"io"
 	"math/rand"
 	"net/http"
@@ -50,8 +51,12 @@ type Server struct {
 	plugin        plugin.Plugin
 	db            storage.DatabaseStorage
 	scheduler     *scheduler.SchedulerService
+<<<<<<< HEAD
 	syncer        syncer.PolicySyncer
 	policyService service.Policy
+=======
+	syncer        *syncer.Syncer
+>>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
 }
 
 // NewServer returns a new server.
@@ -78,8 +83,12 @@ func NewServer(port int64,
 
 	var plugin plugin.Plugin
 	var schedulerService *scheduler.SchedulerService
+<<<<<<< HEAD
 	var syncerService syncer.PolicySyncer
 
+=======
+	var syncerService *syncer.Syncer
+>>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
 	if mode == "pluginserver" {
 		switch pluginType {
 		case "payroll":
@@ -122,8 +131,13 @@ func NewServer(port int64,
 		if err != nil {
 			logger.Fatalf("Failed to initialize DCA plugin: %w", err)
 		}
+<<<<<<< HEAD
 
 		syncerService = syncer.NewSyncService(db, logger.WithField("service", "syncer").Logger, cfg)
+=======
+		syncerService = syncer.NewSyncService(db, logger.WithField("service", "syncer").Logger, cfg)
+
+>>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
 	}
 
 	policyService, err := service.NewPolicyService(db, syncerService, schedulerService, logger.WithField("service", "policy").Logger)
@@ -145,7 +159,10 @@ func NewServer(port int64,
 		scheduler:     schedulerService,
 		logger:        logger,
 		syncer:        syncerService,
+<<<<<<< HEAD
 		policyService: policyService,
+=======
+>>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
 	}
 }
 
@@ -164,6 +181,9 @@ func (s *Server) StartServer() error {
 	e.GET("/ping", s.Ping)
 	e.GET("/getDerivedPublicKey", s.GetDerivedPublicKey)
 	e.POST("/signFromPlugin", s.SignPluginMessages)
+
+	// SYNC ENDPOINT
+	e.POST("/plugin/sync", s.HandleSyncRequest)
 
 	grp := e.Group("/vault")
 	grp.POST("/create", s.CreateVault)
@@ -658,4 +678,64 @@ func (s *Server) VerifyCode(c echo.Context) error {
 		s.logger.Errorf("fail to delete code, err: %v", err)
 	}
 	return c.NoContent(http.StatusOK)
+}
+
+func (s *Server) HandleSyncRequest(c echo.Context) error {
+
+	var syncReq syncer.SyncRequest
+	if err := c.Bind(&syncReq); err != nil {
+		s.logger.Errorf("fail to parse request, err: %v", err)
+		return c.JSON(http.StatusBadRequest, syncer.SyncResponse{
+			Success: false,
+			Error:   fmt.Sprintf("fail to parse request, err: %v", err),
+		})
+	}
+
+	//s.logger.Errorf("fail to commit transaction")
+	//return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
+	//	Success: false,
+	//	Error:   fmt.Sprintf("fail to commit transaction, err: %v", fmt.Errorf("fail to commit transaction")),
+	//})
+
+	// Start transaction
+	tx, err := s.db.Pool().Begin(c.Request().Context())
+	if err != nil {
+		s.logger.Errorf("fail to begin transaction, err: %v", err)
+		return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
+			Success: false,
+			Error:   fmt.Sprintf("fail to begin transaction, err: %v", err),
+		})
+	}
+	defer tx.Rollback(c.Request().Context())
+
+	// Insert policy
+	if err := s.db.InsertPluginPolicyTx(c.Request().Context(), tx, syncReq.Policy); err != nil {
+		s.logger.Errorf("fail to insert policy, err: %v", err)
+		return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
+			Success: false,
+			Error:   fmt.Sprintf("fail to insert policy, err: %v", err),
+		})
+	}
+
+	if syncReq.TimeTrigger != nil {
+		if err := s.db.CreateTimeTriggerTx(c.Request().Context(), tx, *syncReq.TimeTrigger); err != nil {
+			s.logger.Errorf("fail to create time trigger, err: %v", err)
+			return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
+				Success: false,
+				Error:   fmt.Sprintf("fail to create time trigger, err: %v", err),
+			})
+		}
+	}
+
+	if err := tx.Commit(c.Request().Context()); err != nil {
+		s.logger.Errorf("fail to commit transaction, err: %v", err)
+		return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
+			Success: false,
+			Error:   fmt.Sprintf("fail to commit transaction, err: %v", err),
+		})
+	}
+
+	return c.JSON(http.StatusOK, syncer.SyncResponse{
+		Success: true,
+	})
 }

@@ -26,5 +26,10 @@ type DatabaseStorage interface {
 	UpdateTransactionStatus(txID uuid.UUID, status types.TransactionStatus, metadata map[string]interface{}) error
 	GetTransactionHistory(policyID uuid.UUID) ([]types.TransactionHistory, error)
 
+<<<<<<< HEAD
+=======
+	InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) error
+	CreateTimeTriggerTx(ctx context.Context, tx pgx.Tx, trigger types.TimeTrigger) error
+>>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
 	Pool() *pgxpool.Pool
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/vultisig/vultisigner/internal/syncer"
 	"net/http"
 	"time"
 
