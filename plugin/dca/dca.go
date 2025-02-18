@@ -383,6 +383,7 @@ func (p *DCAPlugin) ValidateTransactionProposal(policy types.PluginPolicy, txs [
 		}
 
 		// Decode swap parameters
+		//TODO: refactor this block of code when Mint and Approve transactions are removed.
 		if method != nil && method.Name == "swapExactTokensForTokens" {
 			p.logger.Info("DCA: method is swapExactTokensForTokens ")
 			inputData := parsedTx.Data()[4:]
