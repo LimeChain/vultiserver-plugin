@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/vultisig/vultisigner/internal/syncer"
+	"github.com/vultisig/vultisigner/service"
 	"io"
 	"math/rand"
 	"net/http"
@@ -50,6 +51,7 @@ type Server struct {
 	db            storage.DatabaseStorage
 	scheduler     *scheduler.SchedulerService
 	syncer        *syncer.Syncer
+	policyService service.Policy
 }
 
 // NewServer returns a new server.
@@ -77,6 +79,7 @@ func NewServer(port int64,
 	var plugin plugin.Plugin
 	var schedulerService *scheduler.SchedulerService
 	var syncerService *syncer.Syncer
+	var policyService service.Policy
 	if mode == "pluginserver" {
 		switch pluginType {
 		case "payroll":
@@ -119,7 +122,9 @@ func NewServer(port int64,
 		if err != nil {
 			logger.Fatalf("Failed to initialize DCA plugin: %w", err)
 		}
+
 		syncerService = syncer.NewSyncService(db, logger.WithField("service", "syncer").Logger, cfg)
+		policyService = service.NewPolicyService(db, syncerService, schedulerService, logger)
 
 	}
 	return &Server{
@@ -136,6 +141,7 @@ func NewServer(port int64,
 		scheduler:     schedulerService,
 		logger:        logger,
 		syncer:        syncerService,
+		policyService: policyService,
 	}
 }
 
