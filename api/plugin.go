@@ -285,9 +285,6 @@ func (s *Server) CreatePluginPolicy(c echo.Context) error {
 
 	// TODO: handle trigger updates
 	if s.scheduler != nil {
-		// TODO: sync policies and triggers on on both plugin
-		// and verifier servers in a db transaction, rollback
-		// if policy sync fails
 		if err := s.SyncPolicyOnVerifier(policy); err != nil {
 			return fmt.Errorf("failed to sync policy with verifier: %w", err)
 		}

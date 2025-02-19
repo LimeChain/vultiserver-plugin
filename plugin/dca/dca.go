@@ -274,7 +274,7 @@ func (p *DCAPlugin) ValidateTransactionProposal(policy types.PluginPolicy, txs [
 	if len(txs) == 0 {
 		return fmt.Errorf("no transactions provided for validation")
 	}
-
+	// TODO: get these values from the vault.
 	hexChainCode := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" // vault's chain code
 	derivePath := "m/44'/60'/0'/0/0"                                                   // ethereum
 
@@ -299,6 +299,7 @@ func (p *DCAPlugin) ValidateTransactionProposal(policy types.PluginPolicy, txs [
 		return fmt.Errorf("invalid token addresses")
 	}
 
+	// TODO: change this validation to not compare the total amount, but to validate it is in valid range.
 	totalAmount, ok := new(big.Int).SetString(dcaPolicy.TotalAmount, 10)
 	if !ok || totalAmount.Cmp(big.NewInt(0)) <= 0 {
 		return fmt.Errorf("invalid total amount: value must be positive")
