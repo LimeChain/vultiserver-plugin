@@ -15,7 +15,7 @@ type DatabaseStorage interface {
 	GetPluginPolicy(id string) (types.PluginPolicy, error)
 	GetAllPluginPolicies(publicKey string, pluginType string) ([]types.PluginPolicy, error)
 	UpdatePluginPolicy(policyDoc types.PluginPolicy) (types.PluginPolicy, error)
-	DeletePluginPolicy(id string) error
+	DeletePluginPolicy(ctx context.Context, tx pgx.Tx, id string) error
 
 	CreateTimeTrigger(trigger types.TimeTrigger) error
 	GetPendingTriggers() ([]types.TimeTrigger, error)
@@ -27,5 +27,7 @@ type DatabaseStorage interface {
 
 	InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) error
 	CreateTimeTriggerTx(ctx context.Context, tx pgx.Tx, trigger types.TimeTrigger) error
+	UpdatePluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) error
+	UpdateTriggerExecutionTx(ctx context.Context, tx pgx.Tx, policyID string) error
 	Pool() *pgxpool.Pool
 }

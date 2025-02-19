@@ -73,3 +73,84 @@ func (s *Syncer) SyncWithVerifier(ctx context.Context, req *SyncRequest) (*SyncR
 	}
 	return &syncResp, nil
 }
+
+func (s *Syncer) CreatePolicySync(policy types.PluginPolicy) error {
+	policyBytes, err := json.Marshal(policy)
+	if err != nil {
+		return fmt.Errorf("fail to marshal policy, err: %w", err)
+	}
+
+	cfg, err := config.ReadConfig("config-server")
+	if err != nil {
+		return fmt.Errorf("fail to read plugin config, err: %w", err)
+	}
+
+	verifierPolicyEndpoint := fmt.Sprintf("http://%s:%d/plugin/policy", cfg.Server.Host, cfg.Server.Port)
+	resp, err := http.Post(verifierPolicyEndpoint, "application/json", bytes.NewBuffer(policyBytes))
+	if err != nil {
+		return fmt.Errorf("fail to sync policy with verifier server, err: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("fail to sync policy with verifier server, status: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func (s *Syncer) UpdatePolicySync(policy types.PluginPolicy) error {
+	policyBytes, err := json.Marshal(policy)
+	if err != nil {
+		return fmt.Errorf("fail to marshal policy, err: %w", err)
+	}
+
+	cfg, err := config.ReadConfig("config-server")
+	if err != nil {
+		return fmt.Errorf("fail to read plugin config, err: %w", err)
+	}
+
+	verifierPolicyEndpoint := fmt.Sprintf("http://%s:%d/plugin/policy", cfg.Server.Host, cfg.Server.Port)
+
+	req, err := http.NewRequest(http.MethodPut, verifierPolicyEndpoint, bytes.NewBuffer(policyBytes))
+	if err != nil {
+		return fmt.Errorf("fail to create request, err: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("fail to sync policy with verifier server, err: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("fail to sync policy with verifier server, status: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func (s *Syncer) DeletePolicySync(policyID string) error {
+	cfg, err := config.ReadConfig("config-server")
+	if err != nil {
+		return fmt.Errorf("fail to read plugin config, err: %w", err)
+	}
+
+	verifierPolicyEndpoint := fmt.Sprintf("http://%s:%d/plugin/policy/%s", cfg.Server.Host, cfg.Server.Port, policyID)
+
+	req, err := http.NewRequest(http.MethodDelete, verifierPolicyEndpoint, nil)
+	if err != nil {
+		return fmt.Errorf("fail to create request, err: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("fail to delete policy on verifier server, err: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("fail to delete policy on verifier server, status: %d", resp.StatusCode)
+	}
+
+	return nil
+}

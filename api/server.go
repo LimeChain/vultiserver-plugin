@@ -79,7 +79,7 @@ func NewServer(port int64,
 	var plugin plugin.Plugin
 	var schedulerService *scheduler.SchedulerService
 	var syncerService *syncer.Syncer
-	var policyService service.Policy
+
 	if mode == "pluginserver" {
 		switch pluginType {
 		case "payroll":
@@ -124,9 +124,10 @@ func NewServer(port int64,
 		}
 
 		syncerService = syncer.NewSyncService(db, logger.WithField("service", "syncer").Logger, cfg)
-		policyService = service.NewPolicyService(db, syncerService, schedulerService, logger)
-
 	}
+
+	policyService := service.NewPolicyService(db, syncerService, schedulerService, logger.WithField("service", "policy").Logger)
+
 	return &Server{
 		port:          port,
 		redis:         redis,

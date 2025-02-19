@@ -77,21 +77,12 @@ func (p *PostgresBackend) UpdatePluginPolicy(policyDoc types.PluginPolicy) (type
 	return policy, nil
 }
 
-func (p *PostgresBackend) DeletePluginPolicy(id string) error {
+func (p *PostgresBackend) DeletePluginPolicy(ctx context.Context, tx pgx.Tx, id string) error {
 	if p.pool == nil {
 		return fmt.Errorf("database pool is nil")
 	}
 
-	// TODO: pass from outside
-	ctx := context.Background()
-
-	tx, err := p.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin db transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, `
+	_, err := tx.Exec(ctx, `
 		DELETE FROM transaction_history 
 		WHERE policy_id = $1
 	`, id)
@@ -113,10 +104,6 @@ func (p *PostgresBackend) DeletePluginPolicy(id string) error {
 	`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete policy: %w", err)
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit db transaction: %w", err)
 	}
 
 	return nil
@@ -212,16 +199,22 @@ func (p *PostgresBackend) InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, p
 	return err
 }
 
-func (p *PostgresBackend) CreateTimeTriggerTx(ctx context.Context, tx pgx.Tx, trigger types.TimeTrigger) error {
-	_, err := tx.Exec(ctx, `
-        INSERT INTO time_triggers 
-        (policy_id, cron_expression, start_time, end_time, frequency) 
-        VALUES ($1, $2, $3, $4, $5)`,
-		trigger.PolicyID,
-		trigger.CronExpression,
-		trigger.StartTime,
-		trigger.EndTime,
-		trigger.Frequency,
+func (p *PostgresBackend) UpdatePluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) error {
+	policyJSON, err := json.Marshal(policy.Policy)
+	if err != nil {
+		return fmt.Errorf("failed to marshal policy: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, `
+        UPDATE plugin_policies 
+        SET public_key = $2, plugin_type = $3, signature = $4, policy = $5
+        WHERE id = $1`,
+		policy.ID,
+		policy.PublicKey,
+		policy.PluginType,
+		policy.Signature,
+		policyJSON,
 	)
+
 	return err
 }

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -28,6 +29,20 @@ func (p *PostgresBackend) CreateTimeTrigger(trigger types.TimeTrigger) error {
 		trigger.EndTime,
 		trigger.Frequency)
 
+	return err
+}
+
+func (p *PostgresBackend) CreateTimeTriggerTx(ctx context.Context, tx pgx.Tx, trigger types.TimeTrigger) error {
+	_, err := tx.Exec(ctx, `
+        INSERT INTO time_triggers 
+        (policy_id, cron_expression, start_time, end_time, frequency) 
+        VALUES ($1, $2, $3, $4, $5)`,
+		trigger.PolicyID,
+		trigger.CronExpression,
+		trigger.StartTime,
+		trigger.EndTime,
+		trigger.Frequency,
+	)
 	return err
 }
 
@@ -78,5 +93,16 @@ func (p *PostgresBackend) UpdateTriggerExecution(policyID string) error {
         WHERE policy_id = $1`
 
 	_, err := p.pool.Exec(context.Background(), query, policyID, time.Now().UTC())
+	return err
+}
+
+func (p *PostgresBackend) UpdateTriggerExecutionTx(ctx context.Context, tx pgx.Tx, policyID string) error {
+	_, err := tx.Exec(ctx, `
+        UPDATE time_triggers 
+        SET last_execution = $2
+        WHERE policy_id = $1`,
+		policyID,
+		time.Now().UTC(),
+	)
 	return err
 }
