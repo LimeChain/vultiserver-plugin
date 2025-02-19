@@ -166,6 +166,12 @@ func (p *DCAPlugin) ValidatePluginPolicy(policyDoc types.PluginPolicy) error {
 		}
 	}
 
+	sourceAddrPolicy := gcommon.HexToAddress(dcaPolicy.SourceTokenID)
+	destAddrPolicy := gcommon.HexToAddress(dcaPolicy.DestinationTokenID)
+	if sourceAddrPolicy == gcommon.HexToAddress("0x0") || destAddrPolicy == gcommon.HexToAddress("0x0") {
+		return fmt.Errorf("invalid token addresses")
+	}
+
 	if dcaPolicy.SourceTokenID == dcaPolicy.DestinationTokenID {
 		return fmt.Errorf("source token and destination token addresses are the same")
 	}
@@ -295,14 +301,10 @@ func (p *DCAPlugin) ValidateTransactionProposal(policy types.PluginPolicy, txs [
 
 	sourceAddrPolicy := gcommon.HexToAddress(dcaPolicy.SourceTokenID)
 	destAddrPolicy := gcommon.HexToAddress(dcaPolicy.DestinationTokenID)
-	if sourceAddrPolicy == gcommon.HexToAddress("0x0") || destAddrPolicy == gcommon.HexToAddress("0x0") {
-		return fmt.Errorf("invalid token addresses")
-	}
 
-	// TODO: change this validation to not compare the total amount, but to validate it is in valid range.
 	totalAmount, ok := new(big.Int).SetString(dcaPolicy.TotalAmount, 10)
-	if !ok || totalAmount.Cmp(big.NewInt(0)) <= 0 {
-		return fmt.Errorf("invalid total amount: value must be positive")
+	if !ok {
+		return fmt.Errorf("invalid total amount")
 	}
 
 	signerAddress, err := common.DeriveAddress(policy.PublicKey, hexChainCode, derivePath)
@@ -393,7 +395,8 @@ func (p *DCAPlugin) validateSwapParameters(parsedTx *gtypes.Transaction, method 
 	if path[0] != *sourceAddrPolicy || path[len(path)-1] != *destAddrPolicy {
 		return fmt.Errorf("swap path tokens mismatch: expected source=%s, destination=%s", *sourceAddrPolicy, *destAddrPolicy)
 	}
-
+	
+	// TODO: change this validation to not compare the total amount, but to validate it is in valid range.
 	amountIn, ok := decodedParams[0].(*big.Int)
 	if !ok {
 		return fmt.Errorf("failed to parse swap amount: invalid format")
