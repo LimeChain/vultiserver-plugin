@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
+<<<<<<< HEAD
 
+=======
+>>>>>>> 24b0d62 (added policyService)
 	"github.com/sirupsen/logrus"
 	"github.com/vultisig/vultisigner/internal/scheduler"
 	"github.com/vultisig/vultisigner/internal/syncer"
@@ -12,29 +15,42 @@ import (
 )
 
 type Policy interface {
+<<<<<<< HEAD
 	CreatePolicyWithSync(ctx context.Context, policy types.PluginPolicy) (*types.PluginPolicy, error)
 	UpdatePolicyWithSync(ctx context.Context, policy types.PluginPolicy) (*types.PluginPolicy, error)
 	DeletePolicyWithSync(ctx context.Context, policyID string) error
 	GetPluginPolicies(ctx context.Context, pluginType, publicKey string) ([]types.PluginPolicy, error)
 	GetPluginPolicy(ctx context.Context, policyID string) (types.PluginPolicy, error)
+=======
+	CreatePolicyWithSync(ctx context.Context, policy types.PluginPolicy) error
+>>>>>>> 24b0d62 (added policyService)
 }
 
 type PolicyService struct {
 	db        storage.DatabaseStorage
+<<<<<<< HEAD
 	syncer    syncer.PolicySyncer
+=======
+	syncer    *syncer.Syncer
+>>>>>>> 24b0d62 (added policyService)
 	scheduler *scheduler.SchedulerService
 	logger    *logrus.Logger
 }
 
+<<<<<<< HEAD
 func NewPolicyService(db storage.DatabaseStorage, syncer syncer.PolicySyncer, scheduler *scheduler.SchedulerService, logger *logrus.Logger) (*PolicyService, error) {
 	if db == nil {
 		return nil, fmt.Errorf("database storage cannot be nil")
 	}
+=======
+func NewPolicyService(db storage.DatabaseStorage, syncer *syncer.Syncer, scheduler *scheduler.SchedulerService, logger *logrus.Logger) *PolicyService {
+>>>>>>> 24b0d62 (added policyService)
 	return &PolicyService{
 		db:        db,
 		syncer:    syncer,
 		scheduler: scheduler,
 		logger:    logger,
+<<<<<<< HEAD
 	}, nil
 }
 
@@ -43,18 +59,35 @@ func (s *PolicyService) CreatePolicyWithSync(ctx context.Context, policy types.P
 	tx, err := s.db.Pool().Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+=======
+	}
+}
+
+func (s *PolicyService) CreatePolicyWithSync(ctx context.Context, policy types.PluginPolicy) error {
+	// Start transaction
+
+	tx, err := s.db.Pool().Begin(ctx)
+	if err != nil {
+		return err
+>>>>>>> 24b0d62 (added policyService)
 	}
 	defer tx.Rollback(ctx)
 
 	// Insert policy
+<<<<<<< HEAD
 	newPolicy, err := s.db.InsertPluginPolicyTx(ctx, tx, policy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert policy: %w", err)
+=======
+	if err := s.db.InsertPluginPolicyTx(ctx, tx, policy); err != nil {
+		return fmt.Errorf("failed to insert policy: %w", err)
+>>>>>>> 24b0d62 (added policyService)
 	}
 
 	// Handle trigger if scheduler exists
 	if s.scheduler != nil {
 		if err := s.scheduler.CreateTimeTrigger(ctx, policy, tx); err != nil {
+<<<<<<< HEAD
 			return nil, fmt.Errorf("failed to create time trigger: %w", err)
 		}
 	}
@@ -128,6 +161,25 @@ func (s *PolicyService) DeletePolicyWithSync(ctx context.Context, policyID strin
 		if err := s.syncer.DeletePolicySync(policyID); err != nil {
 			return fmt.Errorf("failed to sync delete policy with verifier: %w", err)
 		}
+=======
+			return fmt.Errorf("failed to create time trigger: %w", err)
+		}
+	}
+
+	// Sync with verifier
+	syncReq := syncer.SyncRequest{
+		Operation: "CREATE",
+		Policy:    policy,
+	}
+
+	resp, err := s.syncer.SyncWithVerifier(ctx, &syncReq)
+	if err != nil {
+		return fmt.Errorf("failed to sync with verifier: %w", err)
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("verifier sync failed: %w", resp.Error)
+>>>>>>> 24b0d62 (added policyService)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -136,6 +188,7 @@ func (s *PolicyService) DeletePolicyWithSync(ctx context.Context, policyID strin
 
 	return nil
 }
+<<<<<<< HEAD
 
 func (s *PolicyService) GetPluginPolicies(ctx context.Context, pluginType, publicKey string) ([]types.PluginPolicy, error) {
 	policies, err := s.db.GetAllPluginPolicies(ctx, pluginType, publicKey)
@@ -152,3 +205,5 @@ func (s *PolicyService) GetPluginPolicy(ctx context.Context, policyID string) (t
 	}
 	return policy, nil
 }
+=======
+>>>>>>> 24b0d62 (added policyService)

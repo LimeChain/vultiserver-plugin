@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/vultisig/vultisigner/internal/syncer"
+	"github.com/vultisig/vultisigner/service"
 	"io"
 	"math/rand"
 	"net/http"
@@ -56,7 +57,11 @@ type Server struct {
 	policyService service.Policy
 =======
 	syncer        *syncer.Syncer
+<<<<<<< HEAD
 >>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
+=======
+	policyService service.Policy
+>>>>>>> 24b0d62 (added policyService)
 }
 
 // NewServer returns a new server.
@@ -88,7 +93,11 @@ func NewServer(port int64,
 
 =======
 	var syncerService *syncer.Syncer
+<<<<<<< HEAD
 >>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
+=======
+	var policyService service.Policy
+>>>>>>> 24b0d62 (added policyService)
 	if mode == "pluginserver" {
 		switch pluginType {
 		case "payroll":
@@ -132,10 +141,15 @@ func NewServer(port int64,
 			logger.Fatalf("Failed to initialize DCA plugin: %w", err)
 		}
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 		syncerService = syncer.NewSyncService(db, logger.WithField("service", "syncer").Logger, cfg)
 =======
+=======
+
+>>>>>>> 24b0d62 (added policyService)
 		syncerService = syncer.NewSyncService(db, logger.WithField("service", "syncer").Logger, cfg)
+		policyService = service.NewPolicyService(db, syncerService, schedulerService, logger)
 
 >>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
 	}
@@ -160,9 +174,13 @@ func NewServer(port int64,
 		logger:        logger,
 		syncer:        syncerService,
 <<<<<<< HEAD
+<<<<<<< HEAD
 		policyService: policyService,
 =======
 >>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
+=======
+		policyService: policyService,
+>>>>>>> 24b0d62 (added policyService)
 	}
 }
 

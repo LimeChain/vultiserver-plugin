@@ -168,6 +168,7 @@ func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.P
 	}
 
 	return s.db.CreateTimeTriggerTx(ctx, tx, trigger)
+<<<<<<< HEAD
 }
 
 func (s *SchedulerService) GetTriggerFromPolicy(policy types.PluginPolicy) (*types.TimeTrigger, error) {
@@ -222,6 +223,8 @@ func (s *SchedulerService) CreatePolicyTrigger(policy types.PluginPolicy) (*type
 		Frequency:      policySchedule.Schedule.Frequency,
 	}
 	return &trigger, nil
+=======
+>>>>>>> 24b0d62 (added policyService)
 }
 
 func frequencyToCron(frequency string, startTime time.Time) string {
