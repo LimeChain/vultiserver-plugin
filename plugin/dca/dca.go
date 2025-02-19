@@ -320,25 +320,25 @@ func (p *DCAPlugin) ValidateTransactionProposal(policy types.PluginPolicy, txs [
 	return nil
 }
 
-func (p *DCAPlugin) validateTransaction(tx types.PluginKeysignRequest, totalAmountPolicy, policyChainID *big.Int, sourceAddrPolicy, destAddrPolicy, signerAddress *gcommon.Address) error {
+func (p *DCAPlugin) validateTransaction(keysignRequest types.PluginKeysignRequest, totalAmountPolicy, policyChainID *big.Int, sourceAddrPolicy, destAddrPolicy, signerAddress *gcommon.Address) error {
 	// Parse the transaction
-	var parsedTx *gtypes.Transaction
-	txBytes, err := hex.DecodeString(tx.Transaction)
+	var tx *gtypes.Transaction
+	txBytes, err := hex.DecodeString(keysignRequest.Transaction)
 	if err != nil {
 		return fmt.Errorf("failed to decode transaction bytes: %w", err)
 	}
-	err = rlp.DecodeBytes(txBytes, &parsedTx)
+	err = rlp.DecodeBytes(txBytes, &tx)
 	if err != nil {
 		return fmt.Errorf("fail to parse RLP transaction: %w", err)
 	}
 
 	// Validate chain ID
-	if parsedTx.ChainId().Cmp(policyChainID) != 0 {
-		return fmt.Errorf("chain ID mismatch: expected %s, got %s", policyChainID.String(), parsedTx.ChainId().String())
+	if tx.ChainId().Cmp(policyChainID) != 0 {
+		return fmt.Errorf("chain ID mismatch: expected %s, got %s", policyChainID.String(), tx.ChainId().String())
 	}
 
 	// Validate destination address
-	txDestination := parsedTx.To()
+	txDestination := tx.To()
 	if txDestination == nil {
 		return fmt.Errorf("transaction missing destination address")
 	}
@@ -348,15 +348,15 @@ func (p *DCAPlugin) validateTransaction(tx types.PluginKeysignRequest, totalAmou
 	}
 
 	// Validate gas parameters
-	if parsedTx.Gas() == 0 {
+	if tx.Gas() == 0 {
 		return fmt.Errorf("invalid gas limit: must be greater than zero")
 	}
-	if parsedTx.GasPrice().Cmp(big.NewInt(0)) <= 0 {
+	if tx.GasPrice().Cmp(big.NewInt(0)) <= 0 {
 		return fmt.Errorf("invalid gas price: must be greater than zero")
 	}
 
 	// Validate transaction data
-	if len(parsedTx.Data()) == 0 {
+	if len(tx.Data()) == 0 {
 		return fmt.Errorf("transaction contains empty payload")
 	}
 
@@ -364,7 +364,7 @@ func (p *DCAPlugin) validateTransaction(tx types.PluginKeysignRequest, totalAmou
 	if err != nil {
 		return fmt.Errorf("failed to parse router ABI: %w", err)
 	}
-	method, err := parsedRouterABI.MethodById(parsedTx.Data())
+	method, err := parsedRouterABI.MethodById(tx.Data())
 	if err != nil {
 		p.logger.Warn("failed to find method in router ABI")
 	}
@@ -375,14 +375,14 @@ func (p *DCAPlugin) validateTransaction(tx types.PluginKeysignRequest, totalAmou
 	// Validate swap parameters if it's a swap transaction
 	if method != nil && method.Name == "swapExactTokensForTokens" {
 		p.logger.Info("DCA: method is swapExactTokensForTokens")
-		if err := p.validateSwapParameters(parsedTx, method, totalAmountPolicy, sourceAddrPolicy, destAddrPolicy, signerAddress); err != nil {
+		if err := p.validateSwapParameters(tx, method, totalAmountPolicy, sourceAddrPolicy, destAddrPolicy, signerAddress); err != nil {
 			return fmt.Errorf("failed to validate swap parameters: %w", err)
 		}
 	}
 	return nil
 }
-func (p *DCAPlugin) validateSwapParameters(parsedTx *gtypes.Transaction, method *abi.Method, totalAmountPolicy *big.Int, sourceAddrPolicy, destAddrPolicy, signerAddress *gcommon.Address) error {
-	inputData := parsedTx.Data()[4:]
+func (p *DCAPlugin) validateSwapParameters(tx *gtypes.Transaction, method *abi.Method, totalAmountPolicy *big.Int, sourceAddrPolicy, destAddrPolicy, signerAddress *gcommon.Address) error {
+	inputData := tx.Data()[4:]
 	decodedParams, err := method.Inputs.Unpack(inputData)
 	if err != nil {
 		return fmt.Errorf("failed to decode transaction swap parameters: %w", err)
@@ -395,7 +395,7 @@ func (p *DCAPlugin) validateSwapParameters(parsedTx *gtypes.Transaction, method 
 	if path[0] != *sourceAddrPolicy || path[len(path)-1] != *destAddrPolicy {
 		return fmt.Errorf("swap path tokens mismatch: expected source=%s, destination=%s", *sourceAddrPolicy, *destAddrPolicy)
 	}
-	
+
 	// TODO: change this validation to not compare the total amount, but to validate it is in valid range.
 	amountIn, ok := decodedParams[0].(*big.Int)
 	if !ok {
