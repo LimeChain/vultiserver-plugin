@@ -6,35 +6,35 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/vultisig/vultisigner/internal/syncer"
-	"github.com/vultisig/vultisigner/service"
 	"io"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/vultisig/vultisigner/common"
+	"github.com/vultisig/vultisigner/config"
+	"github.com/vultisig/vultisigner/internal/scheduler"
+	"github.com/vultisig/vultisigner/internal/syncer"
+	"github.com/vultisig/vultisigner/internal/tasks"
+	"github.com/vultisig/vultisigner/internal/types"
+	"github.com/vultisig/vultisigner/plugin"
+	"github.com/vultisig/vultisigner/plugin/dca"
+	"github.com/vultisig/vultisigner/plugin/payroll"
+	"github.com/vultisig/vultisigner/service"
+	"github.com/vultisig/vultisigner/storage"
+	"github.com/vultisig/vultisigner/storage/postgres"
+	"github.com/vultisig/vultisigner/uniswap"
+
 	"github.com/DataDog/datadog-go/statsd"
+	gcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/sirupsen/logrus"
 	"github.com/vultisig/mobile-tss-lib/tss"
-
-	gcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/vultisig/vultisigner/common"
-	"github.com/vultisig/vultisigner/config"
-	"github.com/vultisig/vultisigner/internal/scheduler"
-	"github.com/vultisig/vultisigner/internal/tasks"
-	"github.com/vultisig/vultisigner/internal/types"
-	"github.com/vultisig/vultisigner/plugin"
-	"github.com/vultisig/vultisigner/plugin/dca"
-	"github.com/vultisig/vultisigner/plugin/payroll"
-	"github.com/vultisig/vultisigner/storage"
-	"github.com/vultisig/vultisigner/storage/postgres"
-	"github.com/vultisig/vultisigner/uniswap"
 )
 
 type Server struct {
@@ -50,7 +50,7 @@ type Server struct {
 	plugin        plugin.Plugin
 	db            storage.DatabaseStorage
 	scheduler     *scheduler.SchedulerService
-	syncer        *syncer.Syncer
+	syncer        syncer.PolicySyncer
 	policyService service.Policy
 }
 
@@ -78,7 +78,7 @@ func NewServer(port int64,
 
 	var plugin plugin.Plugin
 	var schedulerService *scheduler.SchedulerService
-	var syncerService *syncer.Syncer
+	var syncerService syncer.PolicySyncer
 
 	if mode == "pluginserver" {
 		switch pluginType {
@@ -126,7 +126,10 @@ func NewServer(port int64,
 		syncerService = syncer.NewSyncService(db, logger.WithField("service", "syncer").Logger, cfg)
 	}
 
-	policyService := service.NewPolicyService(db, syncerService, schedulerService, logger.WithField("service", "policy").Logger)
+	policyService, err := service.NewPolicyService(db, syncerService, schedulerService, logger.WithField("service", "policy").Logger)
+	if err != nil {
+		logger.Fatalf("Failed to initialize policy service: %v", err)
+	}
 
 	return &Server{
 		port:          port,
@@ -161,9 +164,6 @@ func (s *Server) StartServer() error {
 	e.GET("/ping", s.Ping)
 	e.GET("/getDerivedPublicKey", s.GetDerivedPublicKey)
 	e.POST("/signFromPlugin", s.SignPluginMessages)
-
-	// SYNC ENDPOINT
-	e.POST("/plugin/sync", s.HandleSyncRequest)
 
 	grp := e.Group("/vault")
 	grp.POST("/create", s.CreateVault)
@@ -658,64 +658,4 @@ func (s *Server) VerifyCode(c echo.Context) error {
 		s.logger.Errorf("fail to delete code, err: %v", err)
 	}
 	return c.NoContent(http.StatusOK)
-}
-
-func (s *Server) HandleSyncRequest(c echo.Context) error {
-
-	var syncReq syncer.SyncRequest
-	if err := c.Bind(&syncReq); err != nil {
-		s.logger.Errorf("fail to parse request, err: %v", err)
-		return c.JSON(http.StatusBadRequest, syncer.SyncResponse{
-			Success: false,
-			Error:   fmt.Sprintf("fail to parse request, err: %v", err),
-		})
-	}
-
-	//s.logger.Errorf("fail to commit transaction")
-	//return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
-	//	Success: false,
-	//	Error:   fmt.Sprintf("fail to commit transaction, err: %v", fmt.Errorf("fail to commit transaction")),
-	//})
-
-	// Start transaction
-	tx, err := s.db.Pool().Begin(c.Request().Context())
-	if err != nil {
-		s.logger.Errorf("fail to begin transaction, err: %v", err)
-		return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
-			Success: false,
-			Error:   fmt.Sprintf("fail to begin transaction, err: %v", err),
-		})
-	}
-	defer tx.Rollback(c.Request().Context())
-
-	// Insert policy
-	if err := s.db.InsertPluginPolicyTx(c.Request().Context(), tx, syncReq.Policy); err != nil {
-		s.logger.Errorf("fail to insert policy, err: %v", err)
-		return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
-			Success: false,
-			Error:   fmt.Sprintf("fail to insert policy, err: %v", err),
-		})
-	}
-
-	if syncReq.TimeTrigger != nil {
-		if err := s.db.CreateTimeTriggerTx(c.Request().Context(), tx, *syncReq.TimeTrigger); err != nil {
-			s.logger.Errorf("fail to create time trigger, err: %v", err)
-			return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
-				Success: false,
-				Error:   fmt.Sprintf("fail to create time trigger, err: %v", err),
-			})
-		}
-	}
-
-	if err := tx.Commit(c.Request().Context()); err != nil {
-		s.logger.Errorf("fail to commit transaction, err: %v", err)
-		return c.JSON(http.StatusInternalServerError, syncer.SyncResponse{
-			Success: false,
-			Error:   fmt.Sprintf("fail to commit transaction, err: %v", err),
-		})
-	}
-
-	return c.JSON(http.StatusOK, syncer.SyncResponse{
-		Success: true,
-	})
 }

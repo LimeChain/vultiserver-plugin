@@ -7,12 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	gcommon "github.com/ethereum/go-ethereum/common"
-	gtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
-	"github.com/labstack/echo/v4"
 	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/internal/tasks"
@@ -21,6 +15,13 @@ import (
 	"github.com/vultisig/vultisigner/plugin/dca"
 	"github.com/vultisig/vultisigner/plugin/payroll"
 	"github.com/vultisig/vultisigner/uniswap"
+
+	gcommon "github.com/ethereum/go-ethereum/common"
+	gtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
+	"github.com/labstack/echo/v4"
 )
 
 func (s *Server) SignPluginMessages(c echo.Context) error {
@@ -48,13 +49,13 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 	}
 
 	// We re-init plugin as verification server doesn't have plugin defined
-	var plugin plugin.Plugin
-	plugin, err = s.initializePlugin(policy.PluginType)
+	var plg plugin.Plugin
+	plg, err = s.initializePlugin(policy.PluginType)
 	if err != nil {
 		return fmt.Errorf("failed to initialize plugin: %w", err)
 	}
 
-	if err := plugin.ValidateTransactionProposal(policy, []types.PluginKeysignRequest{req}); err != nil {
+	if err := plg.ValidateTransactionProposal(policy, []types.PluginKeysignRequest{req}); err != nil {
 		return fmt.Errorf("failed to validate transaction proposal: %w", err)
 	}
 
@@ -215,38 +216,38 @@ func (s *Server) CreatePluginPolicy(c echo.Context) error {
 	}
 
 	// We re-init plugin as verification server doesn't have plugin defined
-	var plugin plugin.Plugin
-	plugin, err := s.initializePlugin(policy.PluginType)
+	var plg plugin.Plugin
+	plg, err := s.initializePlugin(policy.PluginType)
 	if err != nil {
 		err = fmt.Errorf("failed to initialize plugin: %w", err)
 		s.logger.Error(err)
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
-	if err := plugin.SetupPluginPolicy(&policy); err != nil {
+	if err := plg.SetupPluginPolicy(&policy); err != nil {
 		err = fmt.Errorf("failed to setup policy: %w", err)
 		s.logger.Error(err)
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	if err := plugin.ValidatePluginPolicy(policy); err != nil {
+	if err := plg.ValidatePluginPolicy(policy); err != nil {
 		err = fmt.Errorf("failed to validate policy: %w", err)
 		s.logger.Error(err)
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	if err := s.policyService.CreatePolicyWithSync(c.Request().Context(), policy); err != nil {
-		err = fmt.Errorf("failed to create plugin policy: %w", err)
-		s.logger.Error(err)
-		return c.JSON(http.StatusInternalServerError, err)
-	}
-
-	queriedPolicy, err := s.db.GetPluginPolicy(policy.ID)
+	newPolicy, err := s.policyService.CreatePolicyWithSync(c.Request().Context(), policy)
 	if err != nil {
-		err = fmt.Errorf("failed to retrieve policy: %w", err)
+		err = fmt.Errorf("failed to create plugin policy: %w", err)
+		message := map[string]interface{}{
+			"error":   err.Error(),
+			"message": fmt.Sprintf("failed to create policy"),
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
 	}
 
-	return c.JSON(http.StatusOK, queriedPolicy)
+	return c.JSON(http.StatusOK, newPolicy)
 }
 
 // TODO: verify the signature to authorize the operation
@@ -257,15 +258,15 @@ func (s *Server) UpdatePluginPolicyById(c echo.Context) error {
 	}
 
 	// We re-init plugin as verification server doesn't have plugin defined
-	var plugin plugin.Plugin
-	plugin, err := s.initializePlugin(policy.PluginType)
+	var plg plugin.Plugin
+	plg, err := s.initializePlugin(policy.PluginType)
 	if err != nil {
 		err = fmt.Errorf("failed to initialize plugin: %w", err)
 		s.logger.Error(err)
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
-	if err := plugin.ValidatePluginPolicy(policy); err != nil {
+	if err := plg.ValidatePluginPolicy(policy); err != nil {
 		err = fmt.Errorf("failed to validate policy: %w", err)
 		s.logger.Error(err)
 		return c.JSON(http.StatusBadRequest, err)
@@ -273,16 +274,18 @@ func (s *Server) UpdatePluginPolicyById(c echo.Context) error {
 
 	s.logger.Debug("Policy Signature", policy.Signature)
 
-	if err := s.policyService.UpdatePolicyWithSync(c.Request().Context(), policy); err != nil {
-		err = fmt.Errorf("failed to update plugin policy: %w", err)
-	}
-
-	querriedPolicy, err := s.db.GetPluginPolicy(policy.ID)
+	updatedPolicy, err := s.policyService.UpdatePolicyWithSync(c.Request().Context(), policy)
 	if err != nil {
-		err = fmt.Errorf("failed to retrieve policy: %w", err)
+		err = fmt.Errorf("failed to update plugin policy: %w", err)
+		message := map[string]interface{}{
+			"error":   err.Error(),
+			"message": fmt.Sprintf("failed to update policy: %s", policy.ID),
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
 	}
 
-	return c.JSON(http.StatusOK, querriedPolicy)
+	return c.JSON(http.StatusOK, updatedPolicy)
 }
 
 // TODO: verify the signature to authorize the operation
