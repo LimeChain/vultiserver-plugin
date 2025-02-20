@@ -90,19 +90,18 @@ func (s *SchedulerService) checkAndEnqueueTasks() error {
 		if trigger.LastExecution != nil {
 			nextTime = schedule.Next(*trigger.LastExecution)
 		} else {
-			nextTime = schedule.Next(time.Now().Add(-24 * time.Hour))
+			nextTime = schedule.Next(trigger.StartTime)
 		}
 
 		nextTime = nextTime.UTC()
 
-		isAfter := time.Now().UTC().After(nextTime)
-		fmt.Println("IS AFTER: ", isAfter)
-
 		s.logger.WithFields(logrus.Fields{
-			"current_time": time.Now().UTC(),
-			"next_time":    nextTime,
-			"policy_id":    trigger.PolicyID,
-			"last_exec":    trigger.LastExecution,
+			"current_time":    time.Now().UTC(),
+			"next_time":       nextTime,
+			"start_time":      trigger.StartTime.UTC(),
+			"policy_id":       trigger.PolicyID,
+			"cron_expression": trigger.CronExpression,
+			"last_exec":       trigger.LastExecution,
 		}).Info("Checking execution time")
 
 		if time.Now().UTC().After(nextTime) {
