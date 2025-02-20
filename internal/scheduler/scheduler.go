@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"strconv"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -73,6 +74,10 @@ func (s *SchedulerService) checkAndEnqueueTasks() error {
 	s.logger.Info("Triggers: ", triggers)
 
 	for _, trigger := range triggers {
+		s.logger.WithFields(logrus.Fields{
+			"policy_id": trigger.PolicyID,
+			"last_exec": trigger.LastExecution,
+		}).Info("Processing trigger")
 		// Parse cron expression
 		schedule, err := cron.ParseStandard(trigger.CronExpression)
 		if err != nil {
@@ -83,23 +88,22 @@ func (s *SchedulerService) checkAndEnqueueTasks() error {
 		// Check if it's time to execute
 		var nextTime time.Time
 		if trigger.LastExecution != nil {
-			nextTime = schedule.Next(trigger.LastExecution.In(time.UTC))
-
-			s.logger.WithFields(logrus.Fields{
-				"current_time_utc": time.Now().UTC(),
-				"next_time_utc":    nextTime.UTC(),
-				"delay_duration":   nextTime.UTC().Sub(time.Now().UTC()),
-			}).Info("Next execution details")
+			nextTime = schedule.Next(*trigger.LastExecution)
 		} else {
-			nextTime = time.Now().UTC().Add(-1 * time.Minute)
-
-			s.logger.WithFields(logrus.Fields{
-				"current_time": time.Now(),
-				"next_time":    nextTime,
-			}).Info("New trigger details")
+			nextTime = schedule.Next(time.Now().Add(-24 * time.Hour))
 		}
 
 		nextTime = nextTime.UTC()
+
+		isAfter := time.Now().UTC().After(nextTime)
+		fmt.Println("IS AFTER: ", isAfter)
+
+		s.logger.WithFields(logrus.Fields{
+			"current_time": time.Now().UTC(),
+			"next_time":    nextTime,
+			"policy_id":    trigger.PolicyID,
+			"last_exec":    trigger.LastExecution,
+		}).Info("Checking execution time")
 
 		if time.Now().UTC().After(nextTime) {
 			triggerEvent := types.PluginTriggerEvent{
@@ -147,6 +151,7 @@ func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.P
 		Schedule struct {
 			Frequency string     `json:"frequency"`
 			StartTime time.Time  `json:"start_time"`
+			Interval  string     `json:"interval"`
 			EndTime   *time.Time `json:"end_time,omitempty"`
 		} `json:"schedule"`
 	}
@@ -156,8 +161,15 @@ func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.P
 	}
 
 	s.logger.Info("Frequency to cron")
+	interval, err := strconv.Atoi(policySchedule.Schedule.Interval)
+	if err != nil {
+		return fmt.Errorf("failed to parse interval: %w", err)
+	}
 
-	cronExpr := frequencyToCron(policySchedule.Schedule.Frequency, policySchedule.Schedule.StartTime)
+	cronExpr := frequencyToCron(policySchedule.Schedule.Frequency, policySchedule.Schedule.StartTime, interval)
+	if cronExpr == "" {
+		return fmt.Errorf("invalid cron expression")
+	}
 
 	trigger := types.TimeTrigger{
 		PolicyID:       policy.ID,
@@ -167,21 +179,52 @@ func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.P
 		Frequency:      policySchedule.Schedule.Frequency,
 	}
 
+	fmt.Println("CRON EXPRESSION: ", cronExpr)
+	fmt.Println("START TIMEEE:  ", policySchedule.Schedule.StartTime)
+	fmt.Println("END TIMEEE:  ", policySchedule.Schedule.EndTime)
+	fmt.Println("FREQUENCYY: ", policySchedule.Schedule.Frequency)
+	fmt.Println("INTERVALLL: ", policySchedule.Schedule.Interval)
+
 	return s.db.CreateTimeTriggerTx(ctx, tx, trigger)
 }
 
-func frequencyToCron(frequency string, startTime time.Time) string {
+func frequencyToCron(frequency string, startTime time.Time, interval int) string {
 	switch frequency {
-	case "5-minutely":
-		return "*/5 * * * *"
+	case "minutely":
+		if interval < 15 {
+			return ""
+		}
+		return fmt.Sprintf("*/%d * * * *", interval)
 	case "hourly":
-		return fmt.Sprintf("%d * * * *", startTime.Minute())
+		if interval == 1 {
+			return fmt.Sprintf("%d * * * *", startTime.Minute())
+		}
+		return fmt.Sprintf("%d */%d * * *", startTime.Minute(), interval)
 	case "daily":
-		return fmt.Sprintf("%d %d * * *", startTime.Minute(), startTime.Hour())
+		if interval == 1 {
+			return fmt.Sprintf("%d %d * * *", startTime.Minute(), startTime.Hour())
+		}
+		return fmt.Sprintf("%d %d */%d * *", startTime.Minute(), startTime.Hour(), interval)
 	case "weekly":
-		return fmt.Sprintf("%d %d * * %d", startTime.Minute(), startTime.Hour(), startTime.Weekday())
+		if interval == 1 {
+			return fmt.Sprintf("%d %d * * %d", startTime.Minute(), startTime.Hour(), startTime.Weekday())
+		}
+		// For weekly intervals > 1, we need to use the day of month instead
+		// This is a limitation of cron expressions
+		return fmt.Sprintf("%d %d 1-31/%d * %d",
+			startTime.Minute(),
+			startTime.Hour(),
+			7*interval,
+			startTime.Weekday())
 	case "monthly":
-		return fmt.Sprintf("%d %d %d * *", startTime.Minute(), startTime.Hour(), startTime.Day())
+		if interval == 1 {
+			return fmt.Sprintf("%d %d %d * *", startTime.Minute(), startTime.Hour(), startTime.Day())
+		}
+		return fmt.Sprintf("%d %d %d */%d *",
+			startTime.Minute(),
+			startTime.Hour(),
+			startTime.Day(),
+			interval)
 	default:
 		return ""
 	}

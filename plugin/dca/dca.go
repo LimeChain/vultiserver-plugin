@@ -11,6 +11,7 @@ import (
 	gtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
+	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -204,6 +205,14 @@ func (p *DCAPlugin) ValidatePluginPolicy(policyDoc types.PluginPolicy) error {
 
 	if dcaPolicy.ChainID == "" {
 		return fmt.Errorf("chain id is required")
+	}
+
+	interval, err := strconv.Atoi(dcaPolicy.Schedule.Interval)
+	if err != nil {
+		return fmt.Errorf("invalid interval %s", dcaPolicy.Schedule.Interval)
+	}
+	if interval <= 0 {
+		return fmt.Errorf("interval should be positive %s", dcaPolicy.Schedule.Interval)
 	}
 
 	return nil

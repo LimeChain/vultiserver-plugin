@@ -46,8 +46,8 @@ export const schema: RJSFSchema = {
         frequency: {
           type: "string",
           title: "Time",
-          enum: ["5-minutely", "hourly", "daily", "weekly", "monthly"],
-          default: "5-minutely",
+          enum: ["minutely", "hourly", "daily", "weekly", "monthly"],
+          default: "minutely",
         },
       },
     },
@@ -184,8 +184,8 @@ export const getUiSchema = (policyId: string, policy: Policy): UiSchema => {
 
 export const defaultFormData = {
   chain_id: "1",
-  source_token_id: ALLOCATE_TOKEN,
-  destination_token_id: BUY_TOKEN,
+  source_token_id: BUY_TOKEN,
+  destination_token_id: ALLOCATE_TOKEN,
   total_amount: asNumber(null),
   total_orders: asNumber(null),
   schedule: {
