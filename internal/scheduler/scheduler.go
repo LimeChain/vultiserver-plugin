@@ -190,9 +190,6 @@ func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.P
 func frequencyToCron(frequency string, startTime time.Time, interval int) string {
 	switch frequency {
 	case "minutely":
-		if interval < 15 {
-			return ""
-		}
 		return fmt.Sprintf("*/%d * * * *", interval)
 	case "hourly":
 		if interval == 1 {
