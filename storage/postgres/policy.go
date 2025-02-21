@@ -80,7 +80,6 @@ func (p *PostgresBackend) GetAllPluginPolicies(ctx context.Context, publicKey st
 	return policies, nil
 }
 
-<<<<<<< HEAD
 func (p *PostgresBackend) InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error) {
 	policyJSON, err := json.Marshal(policy.Policy)
 	if err != nil {
@@ -191,38 +190,5 @@ func (p *PostgresBackend) DeletePluginPolicyTx(ctx context.Context, tx pgx.Tx, i
 	}
 
 	return nil
-=======
-// / TX methods
-func (p *PostgresBackend) InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) error {
-	policyJSON, err := json.Marshal(policy.Policy)
-	if err != nil {
-		return fmt.Errorf("failed to marshal policy: %w", err)
-	}
 
-	_, err = tx.Exec(ctx, `
-        INSERT INTO plugin_policies (
-            id, public_key, plugin_id, plugin_version, 
-            policy_version, plugin_type, signature, policy
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		policy.ID, policy.PublicKey, policy.PluginID,
-		policy.PluginVersion, policy.PolicyVersion,
-		policy.PluginType, policy.Signature, policyJSON,
-	)
-
-	return err
-}
-
-func (p *PostgresBackend) CreateTimeTriggerTx(ctx context.Context, tx pgx.Tx, trigger types.TimeTrigger) error {
-	_, err := tx.Exec(ctx, `
-        INSERT INTO time_triggers 
-        (policy_id, cron_expression, start_time, end_time, frequency) 
-        VALUES ($1, $2, $3, $4, $5)`,
-		trigger.PolicyID,
-		trigger.CronExpression,
-		trigger.StartTime,
-		trigger.EndTime,
-		trigger.Frequency,
-	)
-	return err
->>>>>>> 48ccef6 (feat(syncer):basic setup in creation policy flow)
 }
