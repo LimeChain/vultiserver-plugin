@@ -90,7 +90,7 @@ func (s *SchedulerService) checkAndEnqueueTasks() error {
 		if trigger.LastExecution != nil {
 			nextTime = schedule.Next(*trigger.LastExecution)
 		} else {
-			nextTime = schedule.Next(trigger.StartTime)
+			nextTime = trigger.StartTime
 		}
 
 		nextTime = nextTime.UTC()
