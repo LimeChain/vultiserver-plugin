@@ -13,14 +13,14 @@ type DatabaseStorage interface {
 
 	GetPluginPolicy(ctx context.Context, id string) (types.PluginPolicy, error)
 	GetAllPluginPolicies(ctx context.Context, publicKey string, pluginType string) ([]types.PluginPolicy, error)
-	DeletePluginPolicyTx(ctx context.Context, tx pgx.Tx, id string) error
-	InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error)
-	UpdatePluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error)
+	DeletePluginPolicyTx(ctx context.Context, dbTx pgx.Tx, id string) error
+	InsertPluginPolicyTx(ctx context.Context, dbTx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error)
+	UpdatePluginPolicyTx(ctx context.Context, dbTx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error)
 
-	CreateTimeTriggerTx(ctx context.Context, tx pgx.Tx, trigger types.TimeTrigger) error
+	CreateTimeTriggerTx(ctx context.Context, dbTx pgx.Tx, trigger types.TimeTrigger) error
 	GetPendingTriggers() ([]types.TimeTrigger, error)
 	UpdateTriggerExecution(policyID string) error
-	UpdateTriggerTx(ctx context.Context, policyID string, trigger types.TimeTrigger, tx pgx.Tx) error
+	UpdateTriggerTx(ctx context.Context, policyID string, trigger types.TimeTrigger, dbTx pgx.Tx) error
 
 	CreateTransactionHistory(tx types.TransactionHistory) (uuid.UUID, error)
 	UpdateTransactionStatus(txID uuid.UUID, status types.TransactionStatus, metadata map[string]interface{}) error
