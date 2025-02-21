@@ -11,8 +11,8 @@ import (
 type DatabaseStorage interface {
 	Close() error
 
-	GetPluginPolicy(id string) (types.PluginPolicy, error)
-	GetAllPluginPolicies(publicKey string, pluginType string) ([]types.PluginPolicy, error)
+	GetPluginPolicy(ctx context.Context, id string) (types.PluginPolicy, error)
+	GetAllPluginPolicies(ctx context.Context, publicKey string, pluginType string) ([]types.PluginPolicy, error)
 	DeletePluginPolicyTx(ctx context.Context, tx pgx.Tx, id string) error
 	InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error)
 	UpdatePluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error)
@@ -20,7 +20,7 @@ type DatabaseStorage interface {
 	CreateTimeTriggerTx(ctx context.Context, tx pgx.Tx, trigger types.TimeTrigger) error
 	GetPendingTriggers() ([]types.TimeTrigger, error)
 	UpdateTriggerExecution(policyID string) error
-	UpdateTriggerExecutionTx(ctx context.Context, tx pgx.Tx, policyID string) error
+	UpdateTriggerTx(ctx context.Context, policyID string, trigger types.TimeTrigger, tx pgx.Tx) error
 
 	CreateTransactionHistory(tx types.TransactionHistory) (uuid.UUID, error)
 	UpdateTransactionStatus(txID uuid.UUID, status types.TransactionStatus, metadata map[string]interface{}) error

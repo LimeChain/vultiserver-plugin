@@ -15,6 +15,8 @@ type Policy interface {
 	CreatePolicyWithSync(ctx context.Context, policy types.PluginPolicy) (*types.PluginPolicy, error)
 	UpdatePolicyWithSync(ctx context.Context, policy types.PluginPolicy) (*types.PluginPolicy, error)
 	DeletePolicyWithSync(ctx context.Context, policyID string) error
+	GetPluginPolicies(ctx context.Context, pluginType, publicKey string) ([]types.PluginPolicy, error)
+	GetPluginPolicy(ctx context.Context, policyID string) (types.PluginPolicy, error)
 }
 
 type PolicyService struct {
@@ -86,7 +88,12 @@ func (s *PolicyService) UpdatePolicyWithSync(ctx context.Context, policy types.P
 	}
 
 	if s.scheduler != nil {
-		if err := s.db.UpdateTriggerExecutionTx(ctx, tx, policy.ID); err != nil {
+		trigger, err := s.scheduler.GetTriggerFromPolicy(policy)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get trigger from policy: %w", err)
+		}
+
+		if err := s.db.UpdateTriggerTx(ctx, policy.ID, *trigger, tx); err != nil {
 			return nil, fmt.Errorf("failed to update trigger execution tx: %w", err)
 		}
 	}
@@ -128,4 +135,20 @@ func (s *PolicyService) DeletePolicyWithSync(ctx context.Context, policyID strin
 	}
 
 	return nil
+}
+
+func (s *PolicyService) GetPluginPolicies(ctx context.Context, pluginType, publicKey string) ([]types.PluginPolicy, error) {
+	policies, err := s.db.GetAllPluginPolicies(ctx, pluginType, publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get policies: %w", err)
+	}
+	return policies, nil
+}
+
+func (s *PolicyService) GetPluginPolicy(ctx context.Context, policyID string) (types.PluginPolicy, error) {
+	policy, err := s.db.GetPluginPolicy(ctx, policyID)
+	if err != nil {
+		return types.PluginPolicy{}, fmt.Errorf("failed to get policy: %w", err)
+	}
+	return policy, nil
 }

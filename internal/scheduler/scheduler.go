@@ -170,6 +170,35 @@ func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.P
 	return s.db.CreateTimeTriggerTx(ctx, tx, trigger)
 }
 
+func (s *SchedulerService) GetTriggerFromPolicy(policy types.PluginPolicy) (*types.TimeTrigger, error) {
+	var policySchedule struct {
+		Schedule struct {
+			Frequency string     `json:"frequency"`
+			StartTime time.Time  `json:"start_time"`
+			EndTime   *time.Time `json:"end_time,omitempty"`
+		} `json:"schedule"`
+	}
+
+	if err := json.Unmarshal(policy.Policy, &policySchedule); err != nil {
+		return nil, fmt.Errorf("failed to parse policy schedule: %w", err)
+	}
+
+	s.logger.Info("Frequency to cron")
+
+	cronExpr := frequencyToCron(policySchedule.Schedule.Frequency, policySchedule.Schedule.StartTime)
+
+	trigger := types.TimeTrigger{
+		PolicyID:       policy.ID,
+		CronExpression: cronExpr,
+		StartTime:      policySchedule.Schedule.StartTime,
+		EndTime:        policySchedule.Schedule.EndTime,
+		Frequency:      policySchedule.Schedule.Frequency,
+	}
+
+	return &trigger, nil
+
+}
+
 func frequencyToCron(frequency string, startTime time.Time) string {
 	switch frequency {
 	case "5-minutely":

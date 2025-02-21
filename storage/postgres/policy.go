@@ -10,7 +10,7 @@ import (
 	"github.com/vultisig/vultisigner/internal/types"
 )
 
-func (p *PostgresBackend) GetPluginPolicy(id string) (types.PluginPolicy, error) {
+func (p *PostgresBackend) GetPluginPolicy(ctx context.Context, id string) (types.PluginPolicy, error) {
 	if p.pool == nil {
 		return types.PluginPolicy{}, fmt.Errorf("database pool is nil")
 	}
@@ -23,7 +23,7 @@ func (p *PostgresBackend) GetPluginPolicy(id string) (types.PluginPolicy, error)
         FROM plugin_policies 
         WHERE id = $1`
 
-	err := p.pool.QueryRow(context.Background(), query, id).Scan(
+	err := p.pool.QueryRow(ctx, query, id).Scan(
 		&policy.ID,
 		&policy.PublicKey,
 		&policy.PluginID,
@@ -42,7 +42,7 @@ func (p *PostgresBackend) GetPluginPolicy(id string) (types.PluginPolicy, error)
 	return policy, nil
 }
 
-func (p *PostgresBackend) GetAllPluginPolicies(publicKey string, pluginType string) ([]types.PluginPolicy, error) {
+func (p *PostgresBackend) GetAllPluginPolicies(ctx context.Context, publicKey string, pluginType string) ([]types.PluginPolicy, error) {
 	if p.pool == nil {
 		return []types.PluginPolicy{}, fmt.Errorf("database pool is nil")
 	}
@@ -53,7 +53,7 @@ func (p *PostgresBackend) GetAllPluginPolicies(publicKey string, pluginType stri
 		WHERE public_key = $1
 		AND plugin_type = $2`
 
-	rows, err := p.pool.Query(context.Background(), query, publicKey, pluginType)
+	rows, err := p.pool.Query(ctx, query, publicKey, pluginType)
 	if err != nil {
 		return nil, err
 	}
