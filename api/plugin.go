@@ -38,7 +38,7 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 	}
 
 	// Get policy from database
-	policy, err := s.db.GetPluginPolicy(req.PolicyID)
+	policy, err := s.db.GetPluginPolicy(c.Request().Context(), req.PolicyID)
 	if err != nil {
 		return fmt.Errorf("failed to get policy from database: %w", err)
 	}
@@ -160,7 +160,7 @@ func (s *Server) GetPluginPolicyById(c echo.Context) error {
 		return fmt.Errorf("policy id is required")
 	}
 
-	policy, err := s.db.GetPluginPolicy(policyID)
+	policy, err := s.policyService.GetPluginPolicy(c.Request().Context(), policyID)
 	if err != nil {
 		err = fmt.Errorf("failed to retrieve policy: %w", err)
 		message := map[string]interface{}{
@@ -195,7 +195,7 @@ func (s *Server) GetAllPluginPolicies(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, message)
 	}
 
-	policies, err := s.db.GetAllPluginPolicies(publicKey, pluginType)
+	policies, err := s.policyService.GetPluginPolicies(c.Request().Context(), publicKey, pluginType)
 	if err != nil {
 		message := map[string]interface{}{
 			"error":   err.Error(),

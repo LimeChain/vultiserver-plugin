@@ -73,13 +73,17 @@ func (p *PostgresBackend) UpdateTriggerExecution(policyID string) error {
 	return err
 }
 
-func (p *PostgresBackend) UpdateTriggerExecutionTx(ctx context.Context, tx pgx.Tx, policyID string) error {
+func (p *PostgresBackend) UpdateTriggerTx(ctx context.Context, policyID string, trigger types.TimeTrigger, tx pgx.Tx) error {
 	_, err := tx.Exec(ctx, `
         UPDATE time_triggers 
-        SET last_execution = $2
+        SET start_time = $2,
+            frequency = $3,
+            cron_expression = $4
         WHERE policy_id = $1`,
 		policyID,
-		time.Now().UTC(),
+		trigger.StartTime,
+		trigger.Frequency,
+		trigger.CronExpression,
 	)
 	return err
 }

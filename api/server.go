@@ -79,7 +79,6 @@ func NewServer(port int64,
 	var plugin plugin.Plugin
 	var schedulerService *scheduler.SchedulerService
 	var syncerService syncer.PolicySyncer
-
 	if mode == "pluginserver" {
 		switch pluginType {
 		case "payroll":

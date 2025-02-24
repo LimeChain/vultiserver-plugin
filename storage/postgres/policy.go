@@ -10,7 +10,7 @@ import (
 	"github.com/vultisig/vultisigner/internal/types"
 )
 
-func (p *PostgresBackend) GetPluginPolicy(id string) (types.PluginPolicy, error) {
+func (p *PostgresBackend) GetPluginPolicy(ctx context.Context, id string) (types.PluginPolicy, error) {
 	if p.pool == nil {
 		return types.PluginPolicy{}, fmt.Errorf("database pool is nil")
 	}
@@ -23,7 +23,7 @@ func (p *PostgresBackend) GetPluginPolicy(id string) (types.PluginPolicy, error)
         FROM plugin_policies 
         WHERE id = $1`
 
-	err := p.pool.QueryRow(context.Background(), query, id).Scan(
+	err := p.pool.QueryRow(ctx, query, id).Scan(
 		&policy.ID,
 		&policy.PublicKey,
 		&policy.PluginID,
@@ -42,7 +42,7 @@ func (p *PostgresBackend) GetPluginPolicy(id string) (types.PluginPolicy, error)
 	return policy, nil
 }
 
-func (p *PostgresBackend) GetAllPluginPolicies(publicKey string, pluginType string) ([]types.PluginPolicy, error) {
+func (p *PostgresBackend) GetAllPluginPolicies(ctx context.Context, publicKey string, pluginType string) ([]types.PluginPolicy, error) {
 	if p.pool == nil {
 		return []types.PluginPolicy{}, fmt.Errorf("database pool is nil")
 	}
@@ -53,7 +53,7 @@ func (p *PostgresBackend) GetAllPluginPolicies(publicKey string, pluginType stri
 		WHERE public_key = $1
 		AND plugin_type = $2`
 
-	rows, err := p.pool.Query(context.Background(), query, publicKey, pluginType)
+	rows, err := p.pool.Query(ctx, query, publicKey, pluginType)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (p *PostgresBackend) GetAllPluginPolicies(publicKey string, pluginType stri
 	return policies, nil
 }
 
-func (p *PostgresBackend) InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error) {
+func (p *PostgresBackend) InsertPluginPolicyTx(ctx context.Context, dbTx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error) {
 	policyJSON, err := json.Marshal(policy.Policy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal policy: %w", err)
@@ -95,7 +95,7 @@ func (p *PostgresBackend) InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, p
                   policy_version, plugin_type, signature, policy`
 
 	var insertedPolicy types.PluginPolicy
-	err = tx.QueryRow(ctx, query,
+	err = dbTx.QueryRow(ctx, query,
 		policy.ID,
 		policy.PublicKey,
 		policy.PluginID,
@@ -122,7 +122,7 @@ func (p *PostgresBackend) InsertPluginPolicyTx(ctx context.Context, tx pgx.Tx, p
 	return &insertedPolicy, nil
 }
 
-func (p *PostgresBackend) UpdatePluginPolicyTx(ctx context.Context, tx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error) {
+func (p *PostgresBackend) UpdatePluginPolicyTx(ctx context.Context, dbTx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error) {
 	policyJSON, err := json.Marshal(policy.Policy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal policy: %w", err)
@@ -139,7 +139,7 @@ func (p *PostgresBackend) UpdatePluginPolicyTx(ctx context.Context, tx pgx.Tx, p
                   policy_version, plugin_type, signature, policy`
 
 	var updatedPolicy types.PluginPolicy
-	err = tx.QueryRow(ctx, query,
+	err = dbTx.QueryRow(ctx, query,
 		policy.ID,
 		policy.PublicKey,
 		policy.PluginType,
@@ -166,22 +166,22 @@ func (p *PostgresBackend) UpdatePluginPolicyTx(ctx context.Context, tx pgx.Tx, p
 	return &updatedPolicy, nil
 }
 
-func (p *PostgresBackend) DeletePluginPolicyTx(ctx context.Context, tx pgx.Tx, id string) error {
-	_, err := tx.Exec(ctx, `
+func (p *PostgresBackend) DeletePluginPolicyTx(ctx context.Context, dbTx pgx.Tx, id string) error {
+	_, err := dbTx.Exec(ctx, `
 	DELETE FROM transaction_history
 	WHERE policy_id = $1
 	`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete transaction history: %w", err)
 	}
-	_, err = tx.Exec(ctx, `
+	_, err = dbTx.Exec(ctx, `
 	DELETE FROM time_triggers
 	WHERE policy_id = $1
 	`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete time triggers: %w", err)
 	}
-	_, err = tx.Exec(ctx, `
+	_, err = dbTx.Exec(ctx, `
 	DELETE FROM plugin_policies
 	WHERE id = $1
 	`, id)
