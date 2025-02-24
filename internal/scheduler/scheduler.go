@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -144,49 +145,13 @@ func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.P
 		return fmt.Errorf("database backend is nil")
 	}
 
-	s.logger.Info("Attempting to parse policy schedule")
-
-	var policySchedule struct {
-		Schedule struct {
-			Frequency string     `json:"frequency"`
-			StartTime time.Time  `json:"start_time"`
-			Interval  string     `json:"interval"`
-			EndTime   *time.Time `json:"end_time,omitempty"`
-		} `json:"schedule"`
-	}
-
-	if err := json.Unmarshal(policy.Policy, &policySchedule); err != nil {
-		return fmt.Errorf("failed to parse policy schedule: %w", err)
-	}
-
-	s.logger.Info("Frequency to cron")
-	interval, err := strconv.Atoi(policySchedule.Schedule.Interval)
+	trigger, err := s.GetTriggerFromPolicy(policy)
 	if err != nil {
-		return fmt.Errorf("failed to parse interval: %w", err)
+		return fmt.Errorf("failed to get trigger from policy: %w", err)
 	}
 
-	cronExpr := frequencyToCron(policySchedule.Schedule.Frequency, policySchedule.Schedule.StartTime, interval)
-	if cronExpr == "" {
-		return fmt.Errorf("invalid cron expression")
-	}
-
-	trigger := types.TimeTrigger{
-		PolicyID:       policy.ID,
-		CronExpression: cronExpr,
-		StartTime:      policySchedule.Schedule.StartTime,
-		EndTime:        policySchedule.Schedule.EndTime,
-		Frequency:      policySchedule.Schedule.Frequency,
-	}
-
-	fmt.Println("CRON EXPRESSION: ", cronExpr)
-	fmt.Println("START TIMEEE:  ", policySchedule.Schedule.StartTime)
-	fmt.Println("END TIMEEE:  ", policySchedule.Schedule.EndTime)
-	fmt.Println("FREQUENCYY: ", policySchedule.Schedule.Frequency)
-	fmt.Println("INTERVALLL: ", policySchedule.Schedule.Interval)
-
-	return s.db.CreateTimeTriggerTx(ctx, tx, trigger)
+	return s.db.CreateTimeTriggerTx(ctx, tx, *trigger)
 }
-
 
 func (s *SchedulerService) GetTriggerFromPolicy(policy types.PluginPolicy) (*types.TimeTrigger, error) {
 	var policySchedule struct {
@@ -202,7 +167,6 @@ func (s *SchedulerService) GetTriggerFromPolicy(policy types.PluginPolicy) (*typ
 		return nil, fmt.Errorf("failed to parse policy schedule: %w", err)
 	}
 
-	s.logger.Info("Frequency to cron")
 	interval, err := strconv.Atoi(policySchedule.Schedule.Interval)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse interval: %w", err)
@@ -235,7 +199,18 @@ func frequencyToCron(frequency string, startTime time.Time, interval int) string
 		if interval == 1 {
 			return fmt.Sprintf("%d %d * * *", startTime.Minute(), startTime.Hour())
 		}
-		return fmt.Sprintf("%d %d */%d * *", startTime.Minute(), startTime.Hour(), interval)
+		startDay := startTime.Day()
+		var dayList []string
+
+		// Add days from current month
+		for d := startDay; d <= 31; d += interval {
+			dayList = append(dayList, strconv.Itoa(d))
+		}
+
+		return fmt.Sprintf("%d %d %s * *",
+			startTime.Minute(),
+			startTime.Hour(),
+			strings.Join(dayList, ","))
 	case "weekly":
 		if interval == 1 {
 			return fmt.Sprintf("%d %d * * %d", startTime.Minute(), startTime.Hour(), startTime.Weekday())
@@ -251,11 +226,24 @@ func frequencyToCron(frequency string, startTime time.Time, interval int) string
 		if interval == 1 {
 			return fmt.Sprintf("%d %d %d * *", startTime.Minute(), startTime.Hour(), startTime.Day())
 		}
-		return fmt.Sprintf("%d %d %d */%d *",
+		// Create an explicit list of months based on starting month and interval
+		startMonth := int(startTime.Month())
+		var monthList []string
+
+		for m := startMonth; m <= 12; m += interval {
+			monthList = append(monthList, strconv.Itoa(m))
+		}
+
+		// Calculate months that would occur in the next year(s) and wrap around
+		for m := startMonth % interval; m < startMonth && m > 0; m += interval {
+			monthList = append(monthList, strconv.Itoa(m))
+		}
+
+		return fmt.Sprintf("%d %d %d %s *",
 			startTime.Minute(),
 			startTime.Hour(),
 			startTime.Day(),
-			interval)
+			strings.Join(monthList, ","))
 	default:
 		return ""
 	}
