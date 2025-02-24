@@ -139,7 +139,7 @@ func (s *SchedulerService) checkAndEnqueueTasks() error {
 	return nil
 }
 
-func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.PluginPolicy, tx pgx.Tx) error {
+func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.PluginPolicy, dbTx pgx.Tx) error {
 	if s.db == nil {
 		return fmt.Errorf("database backend is nil")
 	}
@@ -216,10 +216,11 @@ func (s *SchedulerService) GetTriggerFromPolicy(policy types.PluginPolicy) (*typ
 		EndTime:        policySchedule.Schedule.EndTime,
 		Frequency:      policySchedule.Schedule.Frequency,
 	}
-
-	return &trigger, nil
-
+  
+	return s.db.CreateTimeTriggerTx(ctx, dbTx, trigger)
 }
+
+
 
 func frequencyToCron(frequency string, startTime time.Time, interval int) string {
 	switch frequency {
