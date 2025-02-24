@@ -150,7 +150,7 @@ func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.P
 		return fmt.Errorf("failed to get trigger from policy: %w", err)
 	}
 
-	return s.db.CreateTimeTriggerTx(ctx, tx, *trigger)
+	return s.db.CreateTimeTriggerTx(ctx, dbTx, *trigger)
 }
 
 func (s *SchedulerService) GetTriggerFromPolicy(policy types.PluginPolicy) (*types.TimeTrigger, error) {
@@ -181,7 +181,7 @@ func (s *SchedulerService) GetTriggerFromPolicy(policy types.PluginPolicy) (*typ
 		Frequency:      policySchedule.Schedule.Frequency,
 	}
   
-	return s.db.CreateTimeTriggerTx(ctx, dbTx, trigger)
+	return &trigger, nil
 }
 
 
