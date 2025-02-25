@@ -252,7 +252,6 @@ func (s *IntervalSchedule) Next(t time.Time) time.Time {
 
 	switch s.Frequency {
 	case "daily":
-		fmt.Println("CALCULATING NEXT DAILY")
 		return s.nextDaily(t)
 	case "weekly":
 		return s.nextWeekly(t)
