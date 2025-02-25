@@ -183,12 +183,14 @@ func (s *SchedulerService) GetTriggerFromPolicy(policy types.PluginPolicy) (*typ
 
 	return &trigger, nil
 }
+
 func createSchedule(cronExpr, frequency string, startTime time.Time, interval int) (cron.Schedule, error) {
-	// Use our custom schedule implementation for intervals > 1
-	if interval > 1 && frequency != "minutely" && frequency != "hourly" {
+	// Use our custom schedule implementation for intervals > 1 and when frequency is daily, weekly, monthly
+	if interval > 1 && (frequency == "daily" || frequency == "weekly" || frequency == "monthly") {
 		return NewIntervalSchedule(frequency, startTime, interval)
 	}
 
+	// For standard cron
 	schedule, err := cron.ParseStandard(cronExpr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse cron expression: %w", err)
