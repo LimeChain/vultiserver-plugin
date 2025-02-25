@@ -252,6 +252,7 @@ func (s *IntervalSchedule) Next(t time.Time) time.Time {
 
 	switch s.Frequency {
 	case "daily":
+		fmt.Println("CALCULATING NEXT DAILY")
 		return s.nextDaily(t)
 	case "weekly":
 		return s.nextWeekly(t)
@@ -263,54 +264,77 @@ func (s *IntervalSchedule) Next(t time.Time) time.Time {
 }
 
 func (s *IntervalSchedule) nextDaily(t time.Time) time.Time {
-	// First, find the next occurrence at the correct time of day
-	nextTime := time.Date(t.Year(), t.Month(), t.Day(), s.Hour, s.Minute, 0, 0, s.Location)
+	// Create candidate time with the correct hour and minute on the current day
+	candidate := time.Date(t.Year(), t.Month(), t.Day(), s.Hour, s.Minute, 0, 0, s.Location)
 
-	// If that time is in the past, move to the next day
-	if !nextTime.After(t) {
-		nextTime = nextTime.AddDate(0, 0, 1)
+	// If the candidate is in the past, move to the next day
+	if !candidate.After(t) {
+		candidate = candidate.AddDate(0, 0, 1)
 	}
 
-	// Calculate days since start time
-	daysSinceStart := int(nextTime.Sub(s.StartTime).Hours()) / 24
+	// Calculate the absolute number of days from the epoch for both start time and candidate
+	// This ensures proper alignment regardless of month boundaries
+	startDays := int(s.StartTime.Unix() / (24 * 60 * 60))
+	candidateDays := int(candidate.Unix() / (24 * 60 * 60))
 
-	// If we're not on a valid interval day, adjust forward
-	if remainder := daysSinceStart % s.Interval; remainder != 0 {
-		daysToAdd := s.Interval - remainder
-		nextTime = nextTime.AddDate(0, 0, daysToAdd)
+	// Calculate how many days past the start time
+	daysPastStart := candidateDays - startDays
+
+	// If we're already on a valid day, return the candidate
+	if daysPastStart >= 0 && daysPastStart%s.Interval == 0 {
+		return candidate
 	}
 
-	return nextTime
+	// Otherwise, calculate days to add to reach the next valid day
+	daysToAdd := s.Interval - (daysPastStart % s.Interval)
+	if daysPastStart < 0 {
+		// Special handling if we're before the start time
+		daysToAdd = -daysPastStart
+	}
+
+	return candidate.AddDate(0, 0, daysToAdd)
 }
 
+// nextWeekly calculates the next execution for weekly intervals > 1
 func (s *IntervalSchedule) nextWeekly(t time.Time) time.Time {
-	// First, find the next occurrence of the correct weekday
+	// First find the next occurrence of the correct weekday
 	daysUntilWeekday := int(s.Weekday - t.Weekday())
 	if daysUntilWeekday <= 0 {
 		daysUntilWeekday += 7
 	}
 
-	// Calculate the candidate time (next occurrence of the correct weekday)
-	nextTime := time.Date(
+	// Create the candidate time with the correct weekday, hour, and minute
+	candidate := time.Date(
 		t.Year(), t.Month(), t.Day()+daysUntilWeekday,
 		s.Hour, s.Minute, 0, 0, s.Location,
 	)
 
-	// If that time is in the past, add a week
-	if !nextTime.After(t) {
-		nextTime = nextTime.AddDate(0, 0, 7)
+	// If the candidate is in the past, move to the next week
+	if !candidate.After(t) {
+		candidate = candidate.AddDate(0, 0, 7)
 	}
 
-	// Calculate weeks since start time
-	weeksSinceStart := int(nextTime.Sub(s.StartTime).Hours()) / (24 * 7)
+	// Calculate absolute number of weeks from epoch for proper alignment
+	// Using Monday as the start of the week for consistent calculations
+	startWeeks := int(timeToMondayMidnight(s.StartTime).Unix() / (7 * 24 * 60 * 60))
+	candidateWeeks := int(timeToMondayMidnight(candidate).Unix() / (7 * 24 * 60 * 60))
 
-	// If we're not on a valid interval week, adjust forward
-	if remainder := weeksSinceStart % s.Interval; remainder != 0 {
-		weeksToAdd := s.Interval - remainder
-		nextTime = nextTime.AddDate(0, 0, 7*weeksToAdd)
+	// Calculate how many weeks past the start time
+	weeksPastStart := candidateWeeks - startWeeks
+
+	// If we're already on a valid week, return the candidate
+	if weeksPastStart >= 0 && weeksPastStart%s.Interval == 0 {
+		return candidate
 	}
 
-	return nextTime
+	// Otherwise, calculate weeks to add to reach the next valid week
+	weeksToAdd := s.Interval - (weeksPastStart % s.Interval)
+	if weeksPastStart < 0 {
+		// Special handling if we're before the start time
+		weeksToAdd = -weeksPastStart
+	}
+
+	return candidate.AddDate(0, 0, 7*weeksToAdd)
 }
 
 func (s *IntervalSchedule) nextMonthly(t time.Time) time.Time {
@@ -367,4 +391,15 @@ func (s *IntervalSchedule) nextMonthly(t time.Time) time.Time {
 	}
 
 	return candidate
+}
+
+func timeToMondayMidnight(t time.Time) time.Time {
+	daysFromMonday := int(t.Weekday())
+	if daysFromMonday == 0 { // Sunday
+		daysFromMonday = 6
+	} else {
+		daysFromMonday--
+	}
+
+	return time.Date(t.Year(), t.Month(), t.Day()-daysFromMonday, 0, 0, 0, 0, t.Location())
 }
