@@ -256,6 +256,8 @@ func validateInterval(intervalStr string, frequency string) error {
 		if interval > 12 {
 			return fmt.Errorf("monthly interval must be at most 12 months")
 		}
+	default:
+		return fmt.Errorf("invalid frequency: %s", frequency)
 	}
 
 	return nil

@@ -16,6 +16,11 @@ import (
 	"github.com/vultisig/vultisigner/storage"
 )
 
+const (
+	secondsInDay  = 24 * 60 * 60
+	secondsInWeek = 7 * 24 * 60 * 60
+)
+
 type SchedulerService struct {
 	db        storage.DatabaseStorage
 	logger    *logrus.Logger
@@ -273,8 +278,8 @@ func (s *IntervalSchedule) nextDaily(t time.Time) time.Time {
 
 	// Calculate the absolute number of days from the epoch for both start time and candidate
 	// This ensures proper alignment regardless of month boundaries
-	startDays := int(s.StartTime.Unix() / (24 * 60 * 60))
-	candidateDays := int(candidate.Unix() / (24 * 60 * 60))
+	startDays := int(s.StartTime.Unix() / secondsInDay)
+	candidateDays := int(candidate.Unix() / secondsInDay)
 
 	// Calculate how many days past the start time
 	daysPastStart := candidateDays - startDays
@@ -315,8 +320,8 @@ func (s *IntervalSchedule) nextWeekly(t time.Time) time.Time {
 
 	// Calculate absolute number of weeks from epoch for proper alignment
 	// Using Monday as the start of the week for consistent calculations
-	startWeeks := int(timeToMondayMidnight(s.StartTime).Unix() / (7 * 24 * 60 * 60))
-	candidateWeeks := int(timeToMondayMidnight(candidate).Unix() / (7 * 24 * 60 * 60))
+	startWeeks := int(timeToMondayMidnight(s.StartTime).Unix() / secondsInWeek)
+	candidateWeeks := int(timeToMondayMidnight(candidate).Unix() / secondsInWeek)
 
 	// Calculate how many weeks past the start time
 	weeksPastStart := candidateWeeks - startWeeks
@@ -337,56 +342,44 @@ func (s *IntervalSchedule) nextWeekly(t time.Time) time.Time {
 }
 
 func (s *IntervalSchedule) nextMonthly(t time.Time) time.Time {
-	startMonth := s.StartTime.Month()
-	startYear := s.StartTime.Year()
-
-	// Calculate the candidate date
-	candidateMonth := t.Month()
-	candidateYear := t.Year()
-
-	// If we're past the day of month in the current month, go to next month
-	if t.Day() > s.Day || (t.Day() == s.Day && (t.Hour() > s.Hour || (t.Hour() == s.Hour && t.Minute() >= s.Minute))) {
-		if candidateMonth == time.December {
-			candidateMonth = time.January
-			candidateYear++
-		} else {
-			candidateMonth++
-		}
+	// Always start from at least the schedule's start time
+	if t.Before(s.StartTime) {
+		t = s.StartTime
 	}
+
+	// Calculate total months since the epoch (or any fixed reference point)
+	startMonths := s.StartTime.Year()*12 + int(s.StartTime.Month()) - 1
+	currentMonths := t.Year()*12 + int(t.Month()) - 1
+
+	// Calculate how many intervals have passed since start
+	intervalsPassed := (currentMonths - startMonths) / s.Interval
+
+	// Calculate the last interval month
+	lastIntervalMonth := startMonths + intervalsPassed*s.Interval
+
+	// Calculate the next interval month
+	nextIntervalMonth := lastIntervalMonth
+
+	// If we're already past the day/time in the current interval month,
+	// or if we're exactly at the current interval month but before the start date,
+	// move to the next interval
+	if currentMonths > lastIntervalMonth ||
+		(currentMonths == lastIntervalMonth &&
+			(t.Day() > s.Day || (t.Day() == s.Day && (t.Hour() > s.Hour || (t.Hour() == s.Hour && t.Minute() >= s.Minute))))) {
+		nextIntervalMonth = lastIntervalMonth + s.Interval
+	}
+
+	// Convert back to year and month
+	nextYear := nextIntervalMonth / 12
+	nextMonth := time.Month(nextIntervalMonth%12 + 1)
 
 	// Create the candidate time
-	candidate := time.Date(candidateYear, candidateMonth, s.Day, s.Hour, s.Minute, 0, 0, s.Location)
+	candidate := time.Date(nextYear, nextMonth, s.Day, s.Hour, s.Minute, 0, 0, s.Location)
 
-	// Adjust for months with fewer days than our target day
+	// Handle months with fewer days than our target day
 	if candidate.Day() != s.Day {
 		// We got bumped to the next month due to day overflow, go back to last day of previous month
-		candidate = time.Date(candidateYear, candidateMonth, 0, s.Hour, s.Minute, 0, 0, s.Location)
-	}
-
-	// Calculate months since start
-	monthsSinceStart := (candidateYear-startYear)*12 + int(candidateMonth-startMonth)
-
-	// If we're not on a valid interval month, adjust forward
-	if remainder := monthsSinceStart % s.Interval; remainder != 0 {
-		monthsToAdd := s.Interval - remainder
-
-		// Add the necessary months
-		for i := 0; i < monthsToAdd; i++ {
-			if candidateMonth == time.December {
-				candidateMonth = time.January
-				candidateYear++
-			} else {
-				candidateMonth++
-			}
-		}
-
-		// Create the new candidate
-		candidate = time.Date(candidateYear, candidateMonth, s.Day, s.Hour, s.Minute, 0, 0, s.Location)
-
-		// Adjust for months with fewer days than our target day
-		if candidate.Day() != s.Day {
-			candidate = time.Date(candidateYear, candidateMonth, 0, s.Hour, s.Minute, 0, 0, s.Location)
-		}
+		candidate = time.Date(nextYear, nextMonth, 0, s.Hour, s.Minute, 0, 0, s.Location)
 	}
 
 	return candidate
