@@ -277,6 +277,12 @@ func main() {
 		fatalError("Failed to get Vault token balance", err)
 	}
 	fmt.Println("Vault token balance BEFORE SWAP : ", vaultTokenBalance.String())
+	fmt.Println("APPROVE TOKEN TO VAULT ADDRESS")
+	err = ApproveERC20Token(tokenAddr, *vaultAddress, tokenBalance, client, signerAddress, signerPrivateKey)
+	if err != nil {
+		fatalError("Failed to approve USDC to vault", err)
+	}
+
 	err = TransferERC20Token(tokenAddr, tokenBalance, *vaultAddress, client, signerAddress, signerPrivateKey)
 
 	vaultTokenBalance, err = GetTokenBalance(tokenAddr, *vaultAddress, client)
@@ -287,7 +293,6 @@ func main() {
 
 	tokenBalance, err = GetTokenBalance(tokenAddr, signerAddress, client)
 	fmt.Println("Signer Token Balance AFTER SWAP: ", tokenBalance.String())
-
 }
 func CalculateAmountOutMin(expectedAmountOut *big.Int, slippagePercentage float64) *big.Int {
 	slippageFactor := big.NewFloat(1 - slippagePercentage/100)
@@ -584,7 +589,9 @@ func ApproveERC20Token(
 	if err != nil {
 		return err
 	}
+	fmt.Println("TOKEN APPROVING: ", tokenAddress)
 	gasLimit, err := client.EstimateGas(context.Background(), ethereum.CallMsg{
+		From: signerAddress,
 		To:   &tokenAddress,
 		Data: approveData,
 	})
