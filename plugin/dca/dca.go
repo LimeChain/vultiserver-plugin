@@ -539,14 +539,14 @@ func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gc
 	// in their wallet
 
 	// mint WETH
-	p.logger.Info("Minting WETH")
-	p.logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
-	txHash, rawTx, err := p.uniswapClient.MintWETH(chainID, signerAddress, swapAmountIn, srcTokenAddress)
-	if err != nil {
-		return []RawTxData{}, fmt.Errorf("fail to mint WETH: %w", err)
-	}
-	rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
-	p.logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
+	//p.logger.Info("Minting WETH")
+	//p.logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
+	//txHash, rawTx, err := p.uniswapClient.MintWETH(chainID, signerAddress, swapAmountIn, srcTokenAddress)
+	//if err != nil {
+	//	return []RawTxData{}, fmt.Errorf("fail to mint WETH: %w", err)
+	//}
+	//rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
+	//p.logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
 
 	// TODO:
 	// approve should be done by the Vault user, during policy
@@ -555,7 +555,7 @@ func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gc
 
 	p.logger.Info("Approving Uniswap Router to spend: ", srcTokenAddress.Hex())
 	// approve Router to spend input token
-	txHash, rawTx, err = p.uniswapClient.ApproveERC20Token(chainID, signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), swapAmountIn)
+	txHash, rawTx, err := p.uniswapClient.ApproveERC20Token(chainID, signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), swapAmountIn)
 	if err != nil {
 		return []RawTxData{}, fmt.Errorf("fail to approve token: %w", err)
 	}
