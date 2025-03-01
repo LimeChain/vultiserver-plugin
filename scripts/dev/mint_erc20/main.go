@@ -111,7 +111,6 @@ var (
 	WETHAddress = gcommon.HexToAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
 
 	swapAmountIn = big.NewInt(9e18)
-	//swapAmountMin = big.NewInt(1)
 
 	tokenAddress string
 )
@@ -260,7 +259,7 @@ func main() {
 	log.Println("Expected amount out:", expectedAmountOut.String())
 
 	// calculate output amount with slippage
-	slippagePercentage := 1.0
+	slippagePercentage := 5.0
 	amountOutMin := CalculateAmountOutMin(expectedAmountOut, slippagePercentage)
 
 	err = SwapTokens(swapAmountIn, amountOutMin, tokensPair, client, signerAddress, signerPrivateKey)
@@ -277,20 +276,17 @@ func main() {
 		fatalError("Failed to get Vault token balance", err)
 	}
 	fmt.Println("Vault token balance BEFORE SWAP : ", vaultTokenBalance.String())
-	fmt.Println("APPROVE TOKEN TO VAULT ADDRESS")
-	err = ApproveERC20Token(tokenAddr, *vaultAddress, tokenBalance, client, signerAddress, signerPrivateKey)
 	if err != nil {
 		fatalError("Failed to approve USDC to vault", err)
 	}
 
 	err = TransferERC20Token(tokenAddr, tokenBalance, *vaultAddress, client, signerAddress, signerPrivateKey)
-
+	
 	vaultTokenBalance, err = GetTokenBalance(tokenAddr, *vaultAddress, client)
 	if err != nil {
 		fatalError("Failed to get Vault token balance", err)
 	}
 	fmt.Println("Vault token balance AFTER SWAP: ", vaultTokenBalance.String())
-
 	tokenBalance, err = GetTokenBalance(tokenAddr, signerAddress, client)
 	fmt.Println("Signer Token Balance AFTER SWAP: ", tokenBalance.String())
 }

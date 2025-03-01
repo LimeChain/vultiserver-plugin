@@ -93,7 +93,7 @@ func (uc *Client) ApproveERC20Token(chainID *big.Int, signerAddress *common.Addr
 	if err != nil {
 		return nil, nil, err
 	}
-		approveData, err := parsedABI.Pack("approve", spenderAddress, amount)
+	approveData, err := parsedABI.Pack("approve", spenderAddress, amount)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to pack approve data: %w", err)
 	}
@@ -108,7 +108,7 @@ func (uc *Client) ApproveERC20Token(chainID *big.Int, signerAddress *common.Addr
 		return nil, nil, fmt.Errorf("failed to get gas price: %w", err)
 	}
 	gasLimit, err := uc.cfg.rpcClient.EstimateGas(context.Background(), ethereum.CallMsg{
-		From: *signerAddress,
+		From: *signerAddress, //This field is needed when there is approve on USDC token.
 		To:   &tokenAddress,
 		Data: approveData,
 	})
