@@ -531,22 +531,7 @@ func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gc
 
 	// TODO: validate the price range (if specified)
 
-	rawTxsData := []RawTxData{}
-
-	// TODO:
-	// remove, it is not responsibility of the plugin
-	// the user should have the coresponding amount of WETH
-	// in their wallet
-
-	// mint WETH
-	//p.logger.Info("Minting WETH")
-	//p.logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
-	//txHash, rawTx, err := p.uniswapClient.MintWETH(chainID, signerAddress, swapAmountIn, srcTokenAddress)
-	//if err != nil {
-	//	return []RawTxData{}, fmt.Errorf("fail to mint WETH: %w", err)
-	//}
-	//rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
-	//p.logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
+	var rawTxsData []RawTxData
 
 	// TODO:
 	// approve should be done by the Vault user, during policy

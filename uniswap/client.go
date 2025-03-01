@@ -27,45 +27,6 @@ func (uc *Client) GetRouterAddress() *common.Address {
 	return uc.cfg.routerAddress
 }
 
-func (uc *Client) MintWETH(chainID *big.Int, signerAddress *common.Address, amount *big.Int, tokenAddress common.Address) ([]byte, []byte, error) {
-	wethABI := `[{"name":"deposit","type":"function","stateMutability":"payable"}]`
-
-	parsedABI, err := abi.JSON(strings.NewReader(wethABI))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	data, err := parsedABI.Pack("deposit")
-	if err != nil {
-		return nil, nil, err
-	}
-	gasPrice, err := uc.cfg.rpcClient.SuggestGasPrice(context.Background())
-	if err != nil {
-		return nil, nil, err
-	}
-	// TODO: use proper nonce management
-	nonce, err := uc.cfg.rpcClient.PendingNonceAt(context.Background(), *signerAddress)
-	if err != nil {
-		return nil, nil, err
-	}
-	gasLimit, err := uc.cfg.rpcClient.EstimateGas(context.Background(), ethereum.CallMsg{
-		To:   &tokenAddress,
-		Data: data,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	gasLimit += uc.cfg.gasLimitBuffer
-
-	tx := types.NewTransaction(nonce, tokenAddress, amount, gasLimit, gasPrice, data)
-	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx, chainID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return hash, rawTx, err
-}
-
 func (uc *Client) ApproveERC20Token(chainID *big.Int, signerAddress *common.Address, tokenAddress, spenderAddress common.Address, amount *big.Int) ([]byte, []byte, error) {
 	tokenABI := `[
 		{
