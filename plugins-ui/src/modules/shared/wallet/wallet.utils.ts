@@ -1,18 +1,18 @@
 import { PluginPolicy } from "@/modules/policy/models/policy";
 
-// const signCustomMessage = async (hexMessage: string, walletAddress: string) => {
-//   if (window.vultisig?.ethereum) {
-//     try {
-//       const signature = await window.vultisig.ethereum.request({
-//         method: "personal_sign",
-//         params: [hexMessage, walletAddress],
-//       });
-//       return signature;
-//     } catch (error) {
-//       return Error("Failed to sign the message: " + error);
-//     }
-//   }
-// };
+const signCustomMessage = async (hexMessage: string, walletAddress: string) => {
+  if (window.vultisig?.ethereum) {
+    try {
+      const signature = await window.vultisig.ethereum.request({
+        method: "personal_sign",
+        params: [hexMessage, walletAddress],
+      });
+      return signature;
+    } catch (error) {
+      return Error("Failed to sign the message: " + error);
+    }
+  }
+};
 
 const getConnectedEthereum = async (provider: any) => {
   if (provider) {
@@ -67,23 +67,23 @@ export const getCurrentProvider = (chain: ChainType) => {
     ? window.vultisig?.ethereum || window.ethereum
     : window[chain] || window.vultisig?.[chain];
 };
-//
-// const toHex = (str: string): string => {
-//   return (
-//     "0x" +
-//     Array.from(str)
-//       .map((char) => char.charCodeAt(0).toString(16).padStart(2, "0"))
-//       .join("")
-//   );
-// };
+
+const toHex = (str: string): string => {
+  return (
+    "0x" +
+    Array.from(str)
+      .map((char) => char.charCodeAt(0).toString(16).padStart(2, "0"))
+      .join("")
+  );
+};
 
 export const signPolicy = async (policy: PluginPolicy): Promise<boolean> => {
   const chain = localStorage.getItem("chain");
 
   if (isSupportedChainType(chain)) {
     const provider = getCurrentProvider(chain);
-    // const serializedPolicy = JSON.stringify(policy);
-    // const hexMessage = toHex(serializedPolicy);
+    const serializedPolicy = JSON.stringify(policy);
+    const hexMessage = toHex(serializedPolicy);
 
     let accounts = [];
     if (chain === "ethereum") {
@@ -97,19 +97,19 @@ export const signPolicy = async (policy: PluginPolicy): Promise<boolean> => {
       return false;
     }
 
-    // const signature = await signCustomMessage(hexMessage, accounts[0]);
-    // if (
-    //   !signature ||
-    //   !Object.keys(signature).length ||
-    //   signature instanceof Error
-    // ) {
-    //   // TODO: show propper error message to the user
-    //   console.error("Failed to sign the message");
-    //   return false;
-    // }
+    const signature = await signCustomMessage(hexMessage, accounts[0]);
+    if (
+      !signature ||
+      !Object.keys(signature).length ||
+      signature instanceof Error
+    ) {
+      // TODO: show propper error message to the user
+      console.error("Failed to sign the message");
+      return false;
+    }
     // if the popup gets closed during key singing (even if threshold is reached)
     // it will terminate and not generate a signature
-    policy.signature = "signature";
+    policy.signature = signature;
 
     return true;
   }
