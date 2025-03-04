@@ -8,9 +8,6 @@ import (
 	"fmt"
 	"github.com/vultisig/vultisigner/common"
 	"log"
-
-	//"github.com/vultisig/vultisigner/uniswap"
-
 	"math/big"
 	"os"
 	"path/filepath"
@@ -281,7 +278,7 @@ func main() {
 	}
 
 	err = TransferERC20Token(tokenAddr, tokenBalance, *vaultAddress, client, signerAddress, signerPrivateKey)
-	
+
 	vaultTokenBalance, err = GetTokenBalance(tokenAddr, *vaultAddress, client)
 	if err != nil {
 		fatalError("Failed to get Vault token balance", err)
