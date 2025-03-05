@@ -47,8 +47,6 @@ const WeiConverter: Widget<RJSFSchema, any, CustomFormContext> = (props) => {
           )
           .toString();
 
-        console.log(amountToWei);
-
         props.onChange(amountToWei);
       }
     }, 200);
