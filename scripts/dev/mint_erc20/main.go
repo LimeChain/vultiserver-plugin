@@ -98,18 +98,18 @@ const (
 	]`
 )
 
-var vaultName string
-var stateDir string
-var WETHAddr = gcommon.HexToAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
-
 var (
 	uniswapV2RouterAddress = gcommon.HexToAddress("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
 
-	WETHAddress = gcommon.HexToAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
+	WETHAddr = gcommon.HexToAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
 
 	swapAmountIn = big.NewInt(9e18)
 
 	tokenAddress string
+
+	vaultName string
+
+	stateDir string
 )
 
 func main() {
@@ -242,13 +242,13 @@ func main() {
 	tokenAddr := gcommon.HexToAddress(tokenAddress)
 
 	fmt.Println("Approving Uniswap Router to spend ", tokenAddr.Hex())
-	err = ApproveERC20Token(WETHAddress, uniswapV2RouterAddress, swapAmountIn, client, signerAddress, signerPrivateKey)
+	err = ApproveERC20Token(WETHAddr, uniswapV2RouterAddress, swapAmountIn, client, signerAddress, signerPrivateKey)
 	if err != nil {
 		fatalError("Failed to approve uniswap v2 router", err)
 	}
 
 	fmt.Println("SWAP TOKENS")
-	tokensPair := []gcommon.Address{WETHAddress, tokenAddr}
+	tokensPair := []gcommon.Address{WETHAddr, tokenAddr}
 	expectedAmountOut, err := GetExpectedAmountOut(swapAmountIn, tokensPair, client)
 	if err != nil {
 		log.Fatalf("Failed to get expected amount out: %v", err)
@@ -267,6 +267,9 @@ func main() {
 
 	fmt.Println("Transfer Tokens to VAULT Address")
 	tokenBalance, err := GetTokenBalance(tokenAddr, signerAddress, client)
+	if err != nil {
+		fatalError("Failed to get token balance", err)
+	}
 	fmt.Println("Signer Token Balance Before SWAP: ", tokenBalance.String())
 	vaultTokenBalance, err := GetTokenBalance(tokenAddr, *vaultAddress, client)
 	if err != nil {
@@ -278,6 +281,9 @@ func main() {
 	}
 
 	err = TransferERC20Token(tokenAddr, tokenBalance, *vaultAddress, client, signerAddress, signerPrivateKey)
+	if err != nil {
+		fatalError("Failed to transfer ERC20 to vault", err)
+	}
 
 	vaultTokenBalance, err = GetTokenBalance(tokenAddr, *vaultAddress, client)
 	if err != nil {
@@ -285,6 +291,9 @@ func main() {
 	}
 	fmt.Println("Vault token balance AFTER SWAP: ", vaultTokenBalance.String())
 	tokenBalance, err = GetTokenBalance(tokenAddr, signerAddress, client)
+	if err != nil {
+		fatalError("Failed to get Signer token balance", err)
+	}
 	fmt.Println("Signer Token Balance AFTER SWAP: ", tokenBalance.String())
 }
 func CalculateAmountOutMin(expectedAmountOut *big.Int, slippagePercentage float64) *big.Int {
@@ -377,14 +386,14 @@ func MintWETH(
 		return err
 	}
 	gasLimit, err := client.EstimateGas(context.Background(), ethereum.CallMsg{
-		To:   &WETHAddress,
+		To:   &WETHAddr,
 		Data: data,
 	})
 	if err != nil {
 		return err
 	}
 	gasLimit += GasLimitBuffer
-	tx := types.NewTransaction(nonce, WETHAddress, amount, gasLimit, gasPrice, data)
+	tx := types.NewTransaction(nonce, WETHAddr, amount, gasLimit, gasPrice, data)
 	return sendTransaction(tx, client, privateKey)
 }
 
