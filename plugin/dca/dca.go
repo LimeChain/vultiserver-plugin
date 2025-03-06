@@ -26,8 +26,8 @@ import (
 	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/internal/signing"
 	"github.com/vultisig/vultisigner/internal/types"
+	"github.com/vultisig/vultisigner/pkg/uniswap"
 	"github.com/vultisig/vultisigner/storage"
-	"github.com/vultisig/vultisigner/uniswap"
 )
 
 const (

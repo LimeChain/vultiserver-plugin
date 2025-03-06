@@ -24,13 +24,13 @@ import (
 	"github.com/vultisig/vultisigner/contexthelper"
 	"github.com/vultisig/vultisigner/internal/tasks"
 	"github.com/vultisig/vultisigner/internal/types"
+	"github.com/vultisig/vultisigner/pkg/uniswap"
 	"github.com/vultisig/vultisigner/plugin"
 	"github.com/vultisig/vultisigner/plugin/dca"
 	"github.com/vultisig/vultisigner/plugin/payroll"
 	"github.com/vultisig/vultisigner/relay"
 	"github.com/vultisig/vultisigner/storage"
 	"github.com/vultisig/vultisigner/storage/postgres"
-	"github.com/vultisig/vultisigner/uniswap"
 )
 
 type WorkerService struct {
