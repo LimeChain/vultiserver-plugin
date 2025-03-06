@@ -517,7 +517,13 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 
 		err = s.plugin.SigningComplete(ctx, signature, signRequest, policy)
 		if err != nil {
+			if err := s.db.UpdateTransactionStatus(txID, types.StatusRejected, metadata); err != nil {
+				s.logger.Errorf("Failed to update transaction status to rejected: %v", err)
+			}
 			return fmt.Errorf("fail to complete signing: %w", err)
+		}
+		if err := s.db.UpdateTransactionStatus(txID, types.StatusMined, metadata); err != nil {
+			s.logger.Errorf("Failed to update transaction status to mined: %v", err)
 		}
 	}
 
