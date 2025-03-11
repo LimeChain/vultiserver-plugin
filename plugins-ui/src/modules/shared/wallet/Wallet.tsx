@@ -13,41 +13,34 @@ const Wallet = () => {
   const [connectedWallet, setConnectedWallet] = useState(false);
 
   const connectWallet = async (chain: string) => {
-    switch (chain) {
-      // add more switch cases as more chains are supported
-      case "ethereum":
-        const accounts =
-          await VulticonnectWalletService.connectToVultiConnect();
-        if (accounts.length && accounts[0]) {
-          setConnectedWallet(true);
-        }
+    if (!connectedWallet) {
+      switch (chain) {
+        // add more switch cases as more chains are supported
+        case "ethereum":
+          const accounts =
+            await VulticonnectWalletService.connectToVultiConnect();
+          if (accounts.length && accounts[0]) {
+            setConnectedWallet(true);
+          }
 
-        break;
+          break;
 
-      default:
-        alert(`Chain ${chain} is currently not supported.`); // toast
-        break;
+        default:
+          alert(`Chain ${chain} is currently not supported.`); // toast
+          break;
+      }
     }
   };
 
   return (
-    <>
-      {!connectedWallet && (
-        <Button
-          size="medium"
-          styleType="primary"
-          type="button"
-          onClick={() => connectWallet(chain)}
-        >
-          Connect Wallet
-        </Button>
-      )}
-      {connectedWallet && (
-        <Button size="medium" styleType="primary" type="button">
-          Connected
-        </Button>
-      )}
-    </>
+    <Button
+      size="medium"
+      styleType="primary"
+      type="button"
+      onClick={() => connectWallet(chain)}
+    >
+      {connectedWallet ? "Connected" : "Connect Wallet"}
+    </Button>
   );
 };
 

@@ -241,15 +241,15 @@ export const getSummaryData = (
     data: [
       {
         key: "Sell Total",
-        value: `${formData.total_amount} ${supportedTokens[formData.source_token_id as string].name}`,
+        value: `${formData.total_amount} ${supportedTokens[formData.source_token_id as string]?.name}`,
       },
       {
         key: "Sell per order",
-        value: `${(formData.total_amount as number) / (formData.total_orders as number)} ${supportedTokens[formData.source_token_id as string].name}`,
+        value: `${(formData.total_amount as number) / (formData.total_orders as number)} ${supportedTokens[formData.source_token_id as string]?.name}`,
       },
       {
         key: "To buy",
-        value: `${supportedTokens[formData.destination_token_id as string].name}`,
+        value: `${supportedTokens[formData.destination_token_id as string]?.name}`,
       },
       { key: "Platform fee", value: "0.1%" },
     ],
