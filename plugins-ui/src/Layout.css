@@ -5,6 +5,7 @@
     height: 100vh;
     overflow: hidden;
     background-color: var(--background-primary-color);
+    color: var(--text-primary-color);
     scrollbar-width: thin;
     scrollbar-color: var(--background-primary-color) var(--background-primary-color); 
   }
@@ -17,6 +18,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    border-bottom: 1px solid var(--border-normal-color);
   }
   
   .content {
@@ -28,7 +30,6 @@
   .left-section {
     width: 350px;
     border-right: 1px solid var(--border-normal-color);
-    border-top: 1px solid var(--border-normal-color);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -39,7 +40,6 @@
   
   .right-section {
     flex: 1;
-    border-top: 1px solid var(--border-normal-color);
     display: flex;
     flex-direction: column;
     align-items: flex-start; /* Ensures content starts from the left */
@@ -49,7 +49,16 @@
   }
 
   .only-section {
+    display: flex;
+    height: calc(100vh - 60px); /* 60px i the height of the navbar*/
+
     flex: 1;
+    flex-direction: column;
+    align-items: center;
+
+    text-align: center;
+    gap: 16px;
+    overflow: scroll;
   }
   
   .navbar, .left-section, .right-section {

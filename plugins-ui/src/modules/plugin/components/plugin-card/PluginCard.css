@@ -1,0 +1,47 @@
+.plugin {
+    display: flex;
+    background: var(--button-secondary-color);
+    border-radius: 12px;
+    padding: 12px;
+    align-items: center;
+  }
+  
+  .plugin.grid {
+    flex-direction: column;
+    width: 376px;
+    align-items: center;
+  }
+  
+  .plugin.grid img {
+    width: 376px;
+  }
+  
+  .plugin.list {
+    flex-direction: row;
+    width: 100%;
+  }
+  
+  .plugin.list img {
+    width: 64px;
+    height: 64px;
+  }
+  
+  .plugin.list .plugin-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    gap: 8px;
+    margin: 0 1rem;
+  }
+  
+  .plugin.list h3 {
+    font-size: 1.125rem;
+    margin: 0;
+  }
+  
+  .plugin.list p {
+    font-size: 0.875rem;
+    margin: 0;
+  }
+  
