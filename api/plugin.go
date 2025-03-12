@@ -455,3 +455,37 @@ func (s *Server) initializePlugin(pluginType string) (plugin.Plugin, error) {
 		return nil, fmt.Errorf("unknown plugin type: %s", pluginType)
 	}
 }
+
+func (s *Server) GetPlugins(c echo.Context) error {
+	plugins, err := s.db.FindPlugins(c.Request().Context())
+	if err != nil {
+		message := map[string]interface{}{
+			"message": "failed to get plugins",
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
+	}
+
+	return c.JSON(http.StatusOK, plugins)
+}
+
+func (s *Server) CreatePlugin(c echo.Context) error {
+	// TODO: this parses json, but does not validate it (required fields)
+	var plugin types.PluginCreateDto
+	if err := c.Bind(&plugin); err != nil {
+		return fmt.Errorf("fail to parse request, err: %w", err)
+	}
+
+	// TODO: validate pricing_id integrity if we're going to pass id here
+
+	created, err := s.db.CreatePlugin(c.Request().Context(), plugin)
+	if err != nil {
+		message := map[string]interface{}{
+			"message": "failed to create plugin",
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
+	}
+
+	return c.JSON(http.StatusOK, created)
+}

@@ -200,6 +200,12 @@ func (s *Server) StartServer() error {
 	pluginGroup.GET("/policy/:policyId", s.GetPluginPolicyById)
 	pluginGroup.DELETE("/policy/:policyId", s.DeletePluginPolicyById)
 
+	if s.mode == "verifier" {
+		pluginsGroup := e.Group("/plugins")
+		pluginsGroup.GET("", s.GetPlugins)
+		pluginsGroup.POST("", s.CreatePlugin)
+	}
+
 	return e.Start(fmt.Sprintf(":%d", s.port))
 }
 

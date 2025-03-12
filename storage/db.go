@@ -27,5 +27,9 @@ type DatabaseStorage interface {
 	UpdateTransactionStatus(txID uuid.UUID, status types.TransactionStatus, metadata map[string]interface{}) error
 	GetTransactionHistory(policyID uuid.UUID, take int, skip int) ([]types.TransactionHistory, error)
 
+	FindPlugins(ctx context.Context) ([]types.Plugin, error)
+	FindPluginById(ctx context.Context, id string) (*types.Plugin, error)
+	CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (*types.Plugin, error)
+
 	Pool() *pgxpool.Pool
 }

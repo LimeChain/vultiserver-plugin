@@ -18,7 +18,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS pricings (
     id SERIAL PRIMARY KEY,
     type pricing_type NOT NULL,
-    frequency pricing_frequency NOT NULL,
+    frequency pricing_frequency DEFAULT NULL,
     amount DOUBLE PRECISION NOT NULL,
     metric pricing_metric NOT NULL
 );
