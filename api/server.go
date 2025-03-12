@@ -338,7 +338,9 @@ func (s *Server) UploadVault(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("fail to decrypt vault from the backup, err: %w", err)
 	}
-	if err := s.blockStorage.UploadFile(content, vault.PublicKeyEcdsa+".bak"); err != nil {
+
+	filePathName := common.GetVaultBackupFilename(vault.PublicKeyEcdsa)
+	if err := s.blockStorage.UploadFile(content, filePathName); err != nil {
 		return fmt.Errorf("fail to upload file, err: %w", err)
 	}
 
@@ -359,7 +361,8 @@ func (s *Server) DownloadVault(c echo.Context) error {
 		return fmt.Errorf("fail to extract password, err: %w", err)
 	}
 
-	content, err := s.blockStorage.GetFile(publicKeyECDSA + ".bak")
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		wrappedErr := fmt.Errorf("fail to read file in DownloadVault, err: %w", err)
 		s.logger.Error(wrappedErr)
@@ -402,7 +405,9 @@ func (s *Server) GetVault(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("fail to extract password, err: %w", err)
 	}
-	content, err := s.blockStorage.GetFile(publicKeyECDSA + ".bak")
+
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		wrappedErr := fmt.Errorf("fail to read file in GetVault, err: %w", err)
 		s.logger.Error(wrappedErr)
@@ -437,7 +442,8 @@ func (s *Server) DeleteVault(c echo.Context) error {
 		return fmt.Errorf("fail to extract password, err: %w", err)
 	}
 
-	content, err := s.blockStorage.GetFile(publicKeyECDSA + ".bak")
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		wrappedErr := fmt.Errorf("fail to read file in DeleteVault, err: %w", err)
 		s.logger.Error(wrappedErr)
@@ -449,7 +455,8 @@ func (s *Server) DeleteVault(c echo.Context) error {
 		return fmt.Errorf("fail to decrypt vault from the backup, err: %w", err)
 	}
 	s.logger.Infof("removing vault file %s per request", vault.PublicKeyEcdsa)
-	err = s.blockStorage.DeleteFile(publicKeyECDSA + ".bak")
+
+	err = s.blockStorage.DeleteFile(filePathName)
 	if err != nil {
 		return fmt.Errorf("fail to remove file, err: %w", err)
 	}
@@ -480,7 +487,7 @@ func (s *Server) SignMessages(c echo.Context) error {
 		s.logger.Errorf("fail to set session, err: %v", err)
 	}
 
-	filePathName := req.PublicKey + ".bak"
+	filePathName := common.GetVaultBackupFilename(req.PublicKey)
 	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		wrappedErr := fmt.Errorf("fail to read file in SignMessages, err: %w", err)
@@ -546,7 +553,8 @@ func (s *Server) ExistVault(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	exist, err := s.blockStorage.FileExist(publicKeyECDSA + ".bak")
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	exist, err := s.blockStorage.FileExist(filePathName)
 	if err != nil || !exist {
 		return c.NoContent(http.StatusBadRequest)
 	}
@@ -583,7 +591,9 @@ func (s *Server) ResendVaultEmail(c echo.Context) error {
 		s.logger.Errorln("password is required")
 		return c.NoContent(http.StatusBadRequest)
 	}
-	content, err := s.blockStorage.GetFile(publicKeyECDSA + ".bak")
+
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		s.logger.Errorf("fail to read file in ResendVaultEmail, err: %v", err)
 		return c.NoContent(http.StatusBadRequest)

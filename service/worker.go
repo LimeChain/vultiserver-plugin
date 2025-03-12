@@ -427,7 +427,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			s.logger.Errorf("Failed to create transaction history: %v", err)
 			continue
 		}
-		
+
 		if err := s.syncer.SyncTransaction("create", newTx); err != nil {
 			s.logger.Errorf("Failed to sync transaction: %v", err)
 			continue
