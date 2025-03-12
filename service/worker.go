@@ -453,8 +453,8 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 		if signResp.StatusCode != http.StatusOK {
 			metadata["error"] = string(respBody)
 			s.db.UpdateTransactionStatus(txID, types.StatusSigningFailed, metadata)
-			s.logger.Errorf("Failed to sign transaction: %s", string(respBody))
-			return fmt.Errorf("failed to sign transaction: %s", string(respBody))
+			s.logger.Errorf("Failed to sign transaction: %s", metadata["error"])
+			return fmt.Errorf("failed to sign transaction: %s", metadata["error"])
 		}
 
 		// prepare local sign request
