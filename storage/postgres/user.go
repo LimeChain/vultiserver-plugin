@@ -29,8 +29,7 @@ func (p *PostgresBackend) FindUserById(ctx context.Context, userId string) (*typ
 func (p *PostgresBackend) FindUserByName(ctx context.Context, username string) (*types.User, error) {
 	query := fmt.Sprintf(`SELECT * FROM %s WHERE username = $1 LIMIT 1;`, USERS_TABLE)
 
-	args := []interface{}{username}
-	rows, err := p.pool.Query(ctx, query, args)
+	rows, err := p.pool.Query(ctx, query, username)
 	if err != nil {
 		return nil, err
 	}

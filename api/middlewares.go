@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/vultisig/vultisigner/config"
+	"github.com/vultisig/vultisigner/internal/jwt"
 )
 
 func (s *Server) statsdMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -40,32 +40,12 @@ func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		tokenStr := authHeader[len("Bearer "):]
 
 		// parse and validate JWT
-		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method")
-			}
-			return cfg.Server.Auth.JwtSecret, nil
-		})
-		if err != nil || !token.Valid {
+		userID, err := jwt.ValidateJWT(tokenStr, cfg.Server.Auth.JwtSecret)
+		if err != nil {
+			s.logger.Error("Failed to parse jwt: ", err)
 			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
 		}
 
-		// extract user from jwt fields
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			s.logger.Error("Failed to parse token claims")
-			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
-		}
-		if err := claims.Valid(); err != nil {
-			s.logger.Error("Invalid token claims")
-			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
-		}
-
-		userID, ok := claims["id"].(string)
-		if !ok || userID == "" {
-			s.logger.Error("Token missing 'id' field or wrong type")
-			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
-		}
 		user, err := s.db.FindUserById(c.Request().Context(), userID)
 		if err != nil {
 			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "User not found"})

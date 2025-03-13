@@ -475,11 +475,12 @@ func (s *Server) Login(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"message": "Invalid credentials"})
 	}
 	if passwordValid := password.CheckPassword(auth.Password, user.Password); !passwordValid {
-		return c.JSON(http.StatusInternalServerError, echo.Map{"message": "Invalid credentials"})
+		return c.JSON(http.StatusUnauthorized, echo.Map{"message": "Invalid credentials"})
 	}
 
 	token, err := jwt.GenerateJWT(user.ID, cfg.Server.Auth.JwtSecret)
 	if err != nil {
+		s.logger.Error("Failed to generate jwt", err)
 		return c.JSON(http.StatusInternalServerError, echo.Map{"message": "Failed to generate token"})
 	}
 
