@@ -29,7 +29,7 @@ func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cfg, err := config.ReadConfig("config-verifier")
 		if err != nil {
-			s.logger.Fatal("Failed to read verifier config: ", err)
+			s.logger.Error("Failed to read verifier config: ", err)
 		}
 
 		authHeader := c.Request().Header.Get("Authorization")
@@ -39,11 +39,6 @@ func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		tokenStr := authHeader[len("Bearer "):]
 
-		// TODO: real validation
-		if tokenStr == "it-is-very-secret" {
-			return next(c)
-		}
-
 		// parse and validate JWT
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -51,14 +46,33 @@ func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			}
 			return cfg.Server.Auth.JwtSecret, nil
 		})
-
 		if err != nil || !token.Valid {
 			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
 		}
 
-		// TODO: create endpoint to encode and issue this token
-		claims, _ := token.Claims.(jwt.MapClaims)
-		c.Set("id", claims["id"])
+		// extract user from jwt fields
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			s.logger.Error("Failed to parse token claims")
+			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
+		}
+		if err := claims.Valid(); err != nil {
+			s.logger.Error("Invalid token claims")
+			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
+		}
+
+		userID, ok := claims["id"].(string)
+		if !ok || userID == "" {
+			s.logger.Error("Token missing 'id' field or wrong type")
+			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
+		}
+		user, err := s.db.FindUserById(c.Request().Context(), userID)
+		if err != nil {
+			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "User not found"})
+		}
+
+		// store a pointer to authenticated user model for usage in next handlers
+		c.Set("user", user)
 
 		return next(c)
 	}

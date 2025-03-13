@@ -10,6 +10,22 @@ import (
 
 const USERS_TABLE = "users"
 
+func (p *PostgresBackend) FindUserById(ctx context.Context, userId string) (*types.User, error) {
+	query := fmt.Sprintf(`SELECT * FROM %s WHERE id = $1 LIMIT 1;`, USERS_TABLE)
+
+	rows, err := p.pool.Query(ctx, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	order, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.User])
+	if err != nil {
+		return nil, err
+	}
+
+	return &order, nil
+}
+
 func (p *PostgresBackend) FindUserByCredentials(
 	ctx context.Context,
 	username string,
