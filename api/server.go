@@ -201,6 +201,8 @@ func (s *Server) StartServer() error {
 	pluginGroup.DELETE("/policy/:policyId", s.DeletePluginPolicyById)
 
 	if s.mode == "verifier" {
+		e.POST("/login", s.Login)
+
 		pluginsGroup := e.Group("/plugins")
 		pluginsGroup.GET("", s.GetPlugins)
 		pluginsGroup.GET("/:pluginId", s.GetPlugin)

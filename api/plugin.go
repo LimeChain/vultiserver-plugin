@@ -10,6 +10,8 @@ import (
 
 	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/config"
+	"github.com/vultisig/vultisigner/internal/jwt"
+	"github.com/vultisig/vultisigner/internal/password"
 	"github.com/vultisig/vultisigner/internal/tasks"
 	"github.com/vultisig/vultisigner/internal/types"
 	"github.com/vultisig/vultisigner/pkg/uniswap"
@@ -456,10 +458,40 @@ func (s *Server) initializePlugin(pluginType string) (plugin.Plugin, error) {
 	}
 }
 
+func (s *Server) Login(c echo.Context) error {
+	cfg, err := config.ReadConfig("config-plugin")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"message": "Failed to read config"})
+	}
+
+	// TODO: validate
+	var auth types.UserAuthDto
+	if err := c.Bind(&auth); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"message": "Invalid request"})
+	}
+
+	passwordHash, err := password.HashPassword(auth.Password)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"message": "Failed to process password"})
+	}
+
+	user, err := s.db.FindUserByCredentials(c.Request().Context(), auth.Username, passwordHash)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, echo.Map{"message": "Invalid credentials"})
+	}
+
+	token, err := jwt.GenerateJWT(user.ID, cfg.Server.Auth.JwtSecret)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"message": "Failed to generate token"})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"token": token})
+}
+
 func (s *Server) GetPlugins(c echo.Context) error {
 	plugins, err := s.db.FindPlugins(c.Request().Context())
 	if err != nil {
-		message := map[string]interface{}{
+		message := echo.Map{
 			"message": "failed to get plugins",
 		}
 		s.logger.Error(err)
@@ -473,7 +505,7 @@ func (s *Server) GetPlugin(c echo.Context) error {
 	pluginID := c.Param("pluginId")
 	if pluginID == "" {
 		err := fmt.Errorf("plugin id is required")
-		message := map[string]interface{}{
+		message := echo.Map{
 			"message": "failed to get plugin",
 			"error":   err.Error(),
 		}
@@ -484,7 +516,7 @@ func (s *Server) GetPlugin(c echo.Context) error {
 
 	plugin, err := s.db.FindPluginById(c.Request().Context(), pluginID)
 	if err != nil {
-		message := map[string]interface{}{
+		message := echo.Map{
 			"message": "failed to get plugin",
 		}
 		s.logger.Error(err)
@@ -503,7 +535,7 @@ func (s *Server) CreatePlugin(c echo.Context) error {
 
 	created, err := s.db.CreatePlugin(c.Request().Context(), plugin)
 	if err != nil {
-		message := map[string]interface{}{
+		message := echo.Map{
 			"message": "failed to create plugin",
 		}
 		s.logger.Error(err)

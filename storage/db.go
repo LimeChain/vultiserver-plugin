@@ -12,6 +12,8 @@ import (
 type DatabaseStorage interface {
 	Close() error
 
+	FindUserByCredentials(ctx context.Context, username string, passwordHash string) (*types.User, error)
+
 	GetPluginPolicy(ctx context.Context, id string) (types.PluginPolicy, error)
 	GetAllPluginPolicies(ctx context.Context, publicKey string, pluginType string) ([]types.PluginPolicy, error)
 	DeletePluginPolicyTx(ctx context.Context, dbTx pgx.Tx, id string) error
