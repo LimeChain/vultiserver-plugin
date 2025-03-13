@@ -26,6 +26,9 @@ type Config struct {
 				} `mapstructure:"uniswap" json:"uniswap,omitempty"`
 			} `mapstructure:"eth" json:"eth,omitempty"`
 		} `mapstructure:"plugin" json:"plugin,omitempty"`
+		Auth struct {
+			JwtSecret string `mapstructure:"jwt_secret" json:"jwt_secret,omitempty"`
+		} `mapstructure:"auth" json:"auth,omitempty"`
 	} `mapstructure:"server" json:"server"`
 
 	Redis struct {

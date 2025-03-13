@@ -203,25 +203,10 @@ func (s *Server) StartServer() error {
 	if s.mode == "verifier" {
 		pluginsGroup := e.Group("/plugins")
 		pluginsGroup.GET("", s.GetPlugins)
-		pluginsGroup.POST("", s.CreatePlugin)
+		pluginsGroup.POST("", s.CreatePlugin, s.authMiddleware)
 	}
 
 	return e.Start(fmt.Sprintf(":%d", s.port))
-}
-
-func (s *Server) statsdMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		start := time.Now()
-		err := next(c)
-		duration := time.Since(start).Milliseconds()
-
-		// Send metrics to statsd
-		_ = s.sdClient.Incr("http.requests", []string{"path:" + c.Path()}, 1)
-		_ = s.sdClient.Timing("http.response_time", time.Duration(duration)*time.Millisecond, []string{"path:" + c.Path()}, 1)
-		_ = s.sdClient.Incr("http.status."+fmt.Sprint(c.Response().Status), []string{"path:" + c.Path(), "method:" + c.Request().Method}, 1)
-
-		return err
-	}
 }
 
 func (s *Server) Ping(c echo.Context) error {
