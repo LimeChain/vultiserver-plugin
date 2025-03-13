@@ -113,8 +113,8 @@ func (p *PayrollPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.
 				Messages:         []string{txHash}, //check how to correctly construct tx hash which depends on blockchain infos like nounce
 				SessionID:        uuid.New().String(),
 				HexEncryptionKey: "0123456789abcdef0123456789abcdef",
-				DerivePath:       "m/44/60/0/0/0",
-				IsECDSA:          true,
+				DerivePath:       policy.DerivePath,
+				IsECDSA:          policy.IsEcdsa,
 				VaultPassword:    "your-secure-password",
 			},
 			Transaction: hex.EncodeToString(rawTx),
