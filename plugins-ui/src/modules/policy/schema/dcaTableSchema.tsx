@@ -8,6 +8,8 @@ import { ethers } from "ethers";
 export const mapData = (
   pluginPolicy: PluginPolicy
 ): { [key: string]: unknown } => {
+  console.log("pluginPolicy", pluginPolicy);
+
   const weiAmount = ethers
     .formatUnits(
       pluginPolicy.policy.total_amount as string,

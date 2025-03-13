@@ -1,4 +1,5 @@
 import {
+  ColumnDef,
   ColumnFiltersState,
   flexRender,
   getCoreRowModel,
@@ -10,8 +11,23 @@ import { usePolicies } from "@/modules/policy/context/PolicyProvider";
 import { mapData, dcaPolicyColumns } from "../../schema/dcaTableSchema"; // todo these should be dynamic once we have the marketplace
 import PolicyFilters from "../policy-filters/PolicyFilters";
 import "./PolicyTable.css";
+import columnJson from "../../schema/tableSchema.json";
+import TokenPair from "@/modules/shared/token-pair/TokenPair";
 
-const columns = [...dcaPolicyColumns];
+const componentMap: Record<string, React.FC<any>> = {
+  TokenPair,
+};
+
+const columns: ColumnDef<any>[] = columnJson.map((col) => ({
+  accessorKey: col.accessorKey,
+  header: col.header,
+  cell: col.cellComponent
+    ? ({ getValue }) => {
+        const Component = componentMap[col.cellComponent]; // Resolve Component
+        return Component ? <Component pair={getValue()} /> : getValue();
+      }
+    : undefined, // Default to normal rendering if no custom component
+}));
 
 const PolicyTable = () => {
   const [data, setData] = useState<any>(() => []);
@@ -23,6 +39,7 @@ const PolicyTable = () => {
       policies.push(mapData(value));
     }
     setData(policies);
+    console.log("policies", policies);
   }, [policyMap]);
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]); // can set initial column filter state here

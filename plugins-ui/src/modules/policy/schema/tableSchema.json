@@ -1,0 +1,27 @@
+[
+    { 
+        "accessorKey": "pair",
+        "header": "Pair",
+        "cellComponent": "TokenPair" 
+    },
+    {
+        "accessorKey": "sell",
+        "header": "Sell total"
+      },
+      {
+        "accessorKey": "orders",
+        "header": "Total orders"
+      },
+      {
+        "accessorKey": "toBuy",
+        "header": "To buy"
+      },
+      {
+        "accessorKey": "orderInterval",
+        "header": "Order interval"
+      },
+      {
+        "accessorKey": "status",
+        "header": "Active"
+      }
+]

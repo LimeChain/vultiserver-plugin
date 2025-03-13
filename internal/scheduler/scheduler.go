@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"strconv"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/hibiken/asynq"
 	"github.com/robfig/cron/v3"
@@ -150,6 +151,7 @@ func (s *SchedulerService) CreateTimeTrigger(ctx context.Context, policy types.P
 	}
 
 	trigger, err := s.GetTriggerFromPolicy(policy)
+	trigger.StartTime = time.Now().UTC()
 	if err != nil {
 		return fmt.Errorf("failed to get trigger from policy: %w", err)
 	}

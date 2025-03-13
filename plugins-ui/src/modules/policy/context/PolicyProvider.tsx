@@ -109,23 +109,23 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!policy) return;
 
     try {
-      const signature = await signPolicy(policy);
+      // const signature = await signPolicy(policy);
 
-      if (signature && typeof signature === "string") {
-        policy.signature = signature;
-        await PolicyService.deletePolicy(policyId);
+      // if (signature && typeof signature === "string") {
+      // policy.signature = signature;
+      await PolicyService.deletePolicy(policyId);
 
-        setPolicyMap((prev) => {
-          const updatedPolicyMap = new Map(prev);
-          updatedPolicyMap.delete(policyId);
+      setPolicyMap((prev) => {
+        const updatedPolicyMap = new Map(prev);
+        updatedPolicyMap.delete(policyId);
 
-          return updatedPolicyMap;
-        });
-        setToast({
-          message: "Policy deleted successfully!",
-          type: "success",
-        });
-      }
+        return updatedPolicyMap;
+      });
+      setToast({
+        message: "Policy deleted successfully!",
+        type: "success",
+      });
+      // }
     } catch (error: any) {
       console.error("Failed to delete policy:", error);
       setToast({

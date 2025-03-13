@@ -4,20 +4,13 @@ import "./PolicyForm.css";
 import { generatePolicy } from "../../utils/policy.util";
 import { PluginPolicy } from "../../models/policy";
 import { useState } from "react";
-import Summary from "@/modules/shared/summary/Summary";
-import { SummaryData } from "@/modules/shared/summary/summary.model";
 import { usePolicies } from "../../context/PolicyProvider";
-import {
-  defaultFormData,
-  getFormData,
-  getSummaryData,
-  getUiSchema,
-  schema,
-} from "../../schema/dcaFormSchema";
 import { TitleFieldTemplate } from "../policy-title/PolicyTitle";
 import TokenSelector from "@/modules/shared/token-selector/TokenSelector";
 import WeiConverter from "@/modules/shared/wei-converter/WeiConverter";
-import { RJSFValidationError } from "@rjsf/utils";
+import { RJSFSchema, RJSFValidationError } from "@rjsf/utils";
+import schema from "../../schema/schema.json";
+import uiSchema from "../../schema/uiSchema.json";
 
 type PolicyFormProps = {
   data?: PluginPolicy;
@@ -27,21 +20,14 @@ type PolicyFormProps = {
 const PolicyForm = ({ data, onSubmitCallback }: PolicyFormProps) => {
   const policyId = data?.id || "";
 
-  const initialFormData = data ? getFormData(data?.policy) : defaultFormData; // Define the initial form state
+  const initialFormData = data ? data.policy : {}; // Define the initial form state
   const [formData, setFormData] = useState(initialFormData);
   const { addPolicy, updatePolicy } = usePolicies();
-
-  const initialSummaryData: SummaryData | null =
-    getSummaryData(initialFormData);
-  const [summaryData, setSummaryData] = useState<SummaryData | null>(
-    initialSummaryData
-  );
 
   const [formKey, setFormKey] = useState(0); // Changing this forces remount
 
   const onChange = (e: IChangeEvent) => {
     setFormData(e.formData);
-    setSummaryData(getSummaryData(e.formData));
   };
 
   const onSubmit = async (submitData: IChangeEvent) => {
@@ -85,7 +71,7 @@ const PolicyForm = ({ data, onSubmitCallback }: PolicyFormProps) => {
   const transformErrors = (errors: RJSFValidationError[]) => {
     return errors.map((error) => {
       if (error.name === "pattern") {
-        error.message = `${error.property} should be a positive number`;
+        error.message = "should be a positive number";
       }
       return error;
     });
@@ -96,20 +82,19 @@ const PolicyForm = ({ data, onSubmitCallback }: PolicyFormProps) => {
       <Form
         key={formKey} // Forces full re-render on reset
         idPrefix="dca" // todo this should be dynamic once we have the marketplace
-        schema={schema}
-        uiSchema={getUiSchema(policyId, formData)}
+        schema={schema as RJSFSchema}
+        uiSchema={uiSchema}
         validator={validator}
         formData={formData}
         onSubmit={onSubmit}
         onChange={onChange}
         showErrorList={false}
         templates={{ TitleFieldTemplate }}
-        widgets={{ TokenSelector: TokenSelector, WeiConverter: WeiConverter }}
+        widgets={{ TokenSelector, WeiConverter }}
         transformErrors={transformErrors}
         liveValidate={!!policyId}
         formContext={{ sourceTokenId: formData.source_token_id as string }} // sourceTokenId is needed in WeiConverter to get the rigth decimal places based on token address
       />
-      {summaryData && <Summary {...summaryData} />}
     </div>
   );
 };
