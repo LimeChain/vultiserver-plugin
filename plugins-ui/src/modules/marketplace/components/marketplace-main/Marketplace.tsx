@@ -20,34 +20,36 @@ const Marketplace = () => {
   };
 
   return (
-    <div className="only-section">
-      <h2>Plugins Marketplace</h2>
-      <MarketplaceFilters
-        viewFilter={view as ViewFilter}
-        onChange={changeView}
-      />
-      <section className="cards">
-        {[1, 2, 3, 4].map((_, index) => (
-          <div key={index}>
-            <PluginCard
-              uiStyle={view}
-              id={index.toString()}
-              title="DCA Plugin"
-              description="The DCA Plugin allows you to dollar cost average into any supported token like Bitcoin. "
-            />
-          </div>
-        ))}
-      </section>
+    <>
+      <div className="only-section">
+        <h2>Plugins Marketplace</h2>
+        <MarketplaceFilters
+          viewFilter={view as ViewFilter}
+          onChange={changeView}
+        />
+        <section className="cards">
+          {[1, 2, 3, 4].map((_, index) => (
+            <div key={index}>
+              <PluginCard
+                uiStyle={view as ViewFilter}
+                id={index.toString()}
+                title="DCA Plugin"
+                description="The DCA Plugin allows you to dollar cost average into any supported token like Bitcoin. "
+              />
+            </div>
+          ))}
+        </section>
 
-      <Button
-        size="small"
-        type="button"
-        styleType="primary"
-        onClick={() => navigate(`/plugin-detail/1`)}
-      >
-        Open Detail view
-      </Button>
-    </div>
+        <Button
+          size="small"
+          type="button"
+          styleType="primary"
+          onClick={() => navigate(`/plugin-detail/1`)}
+        >
+          Open Detail view
+        </Button>
+      </div>
+    </>
   );
 };
 
