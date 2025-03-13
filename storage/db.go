@@ -13,7 +13,7 @@ type DatabaseStorage interface {
 	Close() error
 
 	FindUserById(ctx context.Context, userId string) (*types.User, error)
-	FindUserByCredentials(ctx context.Context, username string, passwordHash string) (*types.User, error)
+	FindUserByName(ctx context.Context, username string) (*types.User, error)
 
 	GetPluginPolicy(ctx context.Context, id string) (types.PluginPolicy, error)
 	GetAllPluginPolicies(ctx context.Context, publicKey string, pluginType string) ([]types.PluginPolicy, error)

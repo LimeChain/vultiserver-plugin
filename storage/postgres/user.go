@@ -26,14 +26,10 @@ func (p *PostgresBackend) FindUserById(ctx context.Context, userId string) (*typ
 	return &order, nil
 }
 
-func (p *PostgresBackend) FindUserByCredentials(
-	ctx context.Context,
-	username string,
-	passwordHash string,
-) (*types.User, error) {
-	query := fmt.Sprintf(`SELECT * FROM %s WHERE username = $1 AND password = $2 LIMIT 1;`, USERS_TABLE)
+func (p *PostgresBackend) FindUserByName(ctx context.Context, username string) (*types.User, error) {
+	query := fmt.Sprintf(`SELECT * FROM %s WHERE username = $1 LIMIT 1;`, USERS_TABLE)
 
-	args := []interface{}{username, passwordHash}
+	args := []interface{}{username}
 	rows, err := p.pool.Query(ctx, query, args)
 	if err != nil {
 		return nil, err
