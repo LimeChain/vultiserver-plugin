@@ -203,6 +203,7 @@ func (s *Server) StartServer() error {
 	if s.mode == "verifier" {
 		pluginsGroup := e.Group("/plugins")
 		pluginsGroup.GET("", s.GetPlugins)
+		pluginsGroup.GET("/:pluginId", s.GetPlugin)
 		pluginsGroup.POST("", s.CreatePlugin, s.authMiddleware)
 	}
 

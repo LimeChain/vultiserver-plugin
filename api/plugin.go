@@ -469,6 +469,31 @@ func (s *Server) GetPlugins(c echo.Context) error {
 	return c.JSON(http.StatusOK, plugins)
 }
 
+func (s *Server) GetPlugin(c echo.Context) error {
+	pluginID := c.Param("pluginId")
+	if pluginID == "" {
+		err := fmt.Errorf("plugin id is required")
+		message := map[string]interface{}{
+			"message": "failed to get plugin",
+			"error":   err.Error(),
+		}
+		s.logger.Error(err)
+
+		return c.JSON(http.StatusBadRequest, message)
+	}
+
+	plugin, err := s.db.FindPluginById(c.Request().Context(), pluginID)
+	if err != nil {
+		message := map[string]interface{}{
+			"message": "failed to get plugin",
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
+	}
+
+	return c.JSON(http.StatusOK, plugin)
+}
+
 func (s *Server) CreatePlugin(c echo.Context) error {
 	// TODO: this parses json, but does not validate it (required fields)
 	var plugin types.PluginCreateDto

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS plugins (
     description TEXT,
     metadata JSONB NOT NULL,
     server_endpoint VARCHAR(255) NOT NULL,
+    vaults VARCHAR(255) NOT NULL,
     pricing_id INT NOT NULL,
     CONSTRAINT fk_pricing FOREIGN KEY (pricing_id) REFERENCES pricings(id) ON DELETE SET NULL
 );

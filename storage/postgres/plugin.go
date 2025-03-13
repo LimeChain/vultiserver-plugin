@@ -52,12 +52,14 @@ func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.Plug
 		description,
 		metadata,
 		server_endpoint,
+		vaults,
 		pricing_id
 	) VALUES (
 		@Title,
 		@Description,
 		@Metadata,
 		@ServerEndpoint,
+		@Vaults,
 		@PricingID
 	) RETURNING id;`, PLUGINS_TABLE)
 	args := pgx.NamedArgs{
@@ -65,6 +67,7 @@ func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.Plug
 		"Description":    pluginDto.Description,
 		"Metadata":       pluginDto.Metadata,
 		"ServerEndpoint": pluginDto.ServerEndpoint,
+		"Vaults":         pluginDto.Vaults,
 		"PricingID":      pluginDto.PricingID,
 	}
 
