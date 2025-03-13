@@ -8,6 +8,9 @@ export const generatePolicy = (
   return {
     id: policyId,
     public_key: "",
+    is_ecdsa: true,
+    chain_code_hex: "",
+    derive_path: "",
     plugin_id: "dca",
     plugin_version: "0.0.1",
     policy_version: "0.0.1",
