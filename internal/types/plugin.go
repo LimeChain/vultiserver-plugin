@@ -16,5 +16,5 @@ type PluginCreateDto struct {
 	Description    string          `json:"description"`
 	Metadata       json.RawMessage `json:"metadata"`
 	ServerEndpoint string          `json:"server_endpoint"`
-	PricingID      string          `json:"pricing_id"` // TODO: pricing struct instead so pricing and plugin are created with 1 request?
+	PricingID      string          `json:"pricing_id"`
 }

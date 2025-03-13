@@ -51,7 +51,7 @@ func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
 		}
 
-		// TODO:
+		// TODO: create endpoint to encode and issue this token
 		claims, _ := token.Claims.(jwt.MapClaims)
 		c.Set("id", claims["id"])
 

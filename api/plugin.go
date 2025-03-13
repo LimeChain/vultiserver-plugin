@@ -476,8 +476,6 @@ func (s *Server) CreatePlugin(c echo.Context) error {
 		return fmt.Errorf("fail to parse request, err: %w", err)
 	}
 
-	// TODO: validate pricing_id integrity if we're going to pass id here
-
 	created, err := s.db.CreatePlugin(c.Request().Context(), plugin)
 	if err != nil {
 		message := map[string]interface{}{
