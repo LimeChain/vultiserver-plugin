@@ -54,4 +54,6 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("failed to create user: %w", err))
 	}
+
+	fmt.Println("User created successfully")
 }

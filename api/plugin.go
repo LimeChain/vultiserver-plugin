@@ -459,7 +459,7 @@ func (s *Server) initializePlugin(pluginType string) (plugin.Plugin, error) {
 }
 
 func (s *Server) Login(c echo.Context) error {
-	cfg, err := config.ReadConfig("config-plugin")
+	cfg, err := config.ReadConfig("config-verifier")
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"message": "Failed to read config"})
 	}
