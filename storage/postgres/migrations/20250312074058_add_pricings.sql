@@ -3,7 +3,7 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'pricing_type') THEN
-        CREATE TYPE pricing_type AS ENUM ('FREE', 'SINGLE', 'RECURRING', 'TX_FEE');
+        CREATE TYPE pricing_type AS ENUM ('FREE', 'SINGLE', 'RECURRING', 'PER_TX');
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'pricing_frequency') THEN
