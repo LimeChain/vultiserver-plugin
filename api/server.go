@@ -18,6 +18,7 @@ import (
 	"github.com/vultisig/vultisigner/internal/syncer"
 	"github.com/vultisig/vultisigner/internal/tasks"
 	"github.com/vultisig/vultisigner/internal/types"
+	vv "github.com/vultisig/vultisigner/internal/vultisig_validator"
 	"github.com/vultisig/vultisigner/pkg/uniswap"
 	"github.com/vultisig/vultisigner/plugin"
 	"github.com/vultisig/vultisigner/plugin/dca"
@@ -29,6 +30,7 @@ import (
 	"github.com/DataDog/datadog-go/statsd"
 	gcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/go-playground/validator/v10"
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -160,6 +162,9 @@ func (s *Server) StartServer() error {
 		middleware.RateLimiterMemoryStoreConfig{Rate: 5, Burst: 30, ExpiresIn: 5 * time.Minute},
 	)
 	e.Use(middleware.RateLimiter(limiterStore))
+
+	e.Validator = &vv.VultisigValidator{Validator: validator.New()}
+
 	e.GET("/ping", s.Ping)
 	e.GET("/getDerivedPublicKey", s.GetDerivedPublicKey)
 	e.POST("/signFromPlugin", s.SignPluginMessages)

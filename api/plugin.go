@@ -526,10 +526,15 @@ func (s *Server) GetPlugin(c echo.Context) error {
 }
 
 func (s *Server) CreatePlugin(c echo.Context) error {
-	// TODO: this parses json, but does not validate it (required fields)
 	var plugin types.PluginCreateDto
 	if err := c.Bind(&plugin); err != nil {
 		return fmt.Errorf("fail to parse request, err: %w", err)
+	}
+
+	if err := c.Validate(&plugin); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": err.Error(),
+		})
 	}
 
 	created, err := s.db.CreatePlugin(c.Request().Context(), plugin)
