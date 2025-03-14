@@ -8,26 +8,43 @@ import {
 } from "@tanstack/react-table";
 import { useEffect, useState } from "react";
 import { usePolicies } from "@/modules/policy/context/PolicyProvider";
-import { mapData, dcaPolicyColumns } from "../../schema/dcaTableSchema"; // todo these should be dynamic once we have the marketplace
+import { mapData } from "../../schema/dcaTableSchema"; // todo these should be dynamic once we have the marketplace
 import PolicyFilters from "../policy-filters/PolicyFilters";
 import "./PolicyTable.css";
 import columnJson from "../../schema/tableSchema.json";
 import TokenPair from "@/modules/shared/token-pair/TokenPair";
+import PolicyActions from "../policy-actions/PolicyActions";
 
 const componentMap: Record<string, React.FC<any>> = {
   TokenPair,
 };
 
-const columns: ColumnDef<any>[] = columnJson.map((col) => ({
-  accessorKey: col.accessorKey,
-  header: col.header,
-  cell: col.cellComponent
-    ? ({ getValue }) => {
-        const Component = componentMap[col.cellComponent]; // Resolve Component
-        return Component ? <Component pair={getValue()} /> : getValue();
-      }
-    : undefined, // Default to normal rendering if no custom component
-}));
+const columns: ColumnDef<any>[] = columnJson.map((col) => {
+  const column: ColumnDef<any> = {
+    accessorKey: col.accessorKey,
+    header: col.header,
+  };
+
+  if (col.cellComponent) {
+    [
+      (column.cell = ({ getValue }) => {
+        const Component = componentMap[col.cellComponent];
+        return Component ? <Component data={getValue()} /> : getValue();
+      }),
+    ];
+  }
+
+  return column;
+});
+
+// all policies must have these actions Pause/Play, Edit, Tx history, Delete
+columns.push({
+  header: "Actions",
+  cell: (info: any) => {
+    const policyId = info.row.original.policyId;
+    return <PolicyActions policyId={policyId} />;
+  },
+});
 
 const PolicyTable = () => {
   const [data, setData] = useState<any>(() => []);
