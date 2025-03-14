@@ -492,6 +492,55 @@ func (s *Server) Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, echo.Map{"token": token})
 }
 
+func (s *Server) GetPricing(c echo.Context) error {
+	pricingID := c.Param("pricingId")
+	if pricingID == "" {
+		err := fmt.Errorf("pricing id is required")
+		message := echo.Map{
+			"message": "failed to get pricing",
+			"error":   err.Error(),
+		}
+		s.logger.Error(err)
+
+		return c.JSON(http.StatusBadRequest, message)
+	}
+
+	pricing, err := s.db.FindPricingById(c.Request().Context(), pricingID)
+	if err != nil {
+		message := echo.Map{
+			"message": "failed to get pricing",
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
+	}
+
+	return c.JSON(http.StatusOK, pricing)
+}
+
+func (s *Server) CreatePricing(c echo.Context) error {
+	var pricing types.PricingCreateDto
+	if err := c.Bind(&pricing); err != nil {
+		return fmt.Errorf("fail to parse request, err: %w", err)
+	}
+
+	if err := c.Validate(&pricing); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": err.Error(),
+		})
+	}
+
+	created, err := s.db.CreatePricing(c.Request().Context(), pricing)
+	if err != nil {
+		message := echo.Map{
+			"message": "failed to create pricing",
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
+	}
+
+	return c.JSON(http.StatusOK, created)
+}
+
 func (s *Server) GetPlugins(c echo.Context) error {
 	plugins, err := s.db.FindPlugins(c.Request().Context())
 	if err != nil {

@@ -212,6 +212,10 @@ func (s *Server) StartServer() error {
 		pluginsGroup.GET("", s.GetPlugins)
 		pluginsGroup.GET("/:pluginId", s.GetPlugin)
 		pluginsGroup.POST("", s.CreatePlugin, s.authMiddleware)
+
+		pricingsGroup := e.Group("/pricings")
+		pricingsGroup.GET("/:pricingId", s.GetPricing)
+		pricingsGroup.POST("", s.CreatePricing, s.authMiddleware)
 	}
 
 	return e.Start(fmt.Sprintf(":%d", s.port))

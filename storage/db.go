@@ -21,6 +21,9 @@ type DatabaseStorage interface {
 	InsertPluginPolicyTx(ctx context.Context, dbTx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error)
 	UpdatePluginPolicyTx(ctx context.Context, dbTx pgx.Tx, policy types.PluginPolicy) (*types.PluginPolicy, error)
 
+	FindPricingById(ctx context.Context, id string) (*types.Pricing, error)
+	CreatePricing(ctx context.Context, pricingDto types.PricingCreateDto) (*types.Pricing, error)
+
 	CreateTimeTriggerTx(ctx context.Context, dbTx pgx.Tx, trigger types.TimeTrigger) error
 	GetPendingTimeTriggers(ctx context.Context) ([]types.TimeTrigger, error)
 	UpdateTimeTriggerLastExecution(ctx context.Context, policyID string) error
