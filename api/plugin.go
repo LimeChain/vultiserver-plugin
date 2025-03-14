@@ -464,10 +464,15 @@ func (s *Server) Login(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"message": "Failed to read config"})
 	}
 
-	// TODO: validate
 	var auth types.UserAuthDto
 	if err := c.Bind(&auth); err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"message": "Invalid request"})
+	}
+
+	if err := c.Validate(&auth); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": err.Error(),
+		})
 	}
 
 	user, err := s.db.FindUserByName(c.Request().Context(), auth.Username)
