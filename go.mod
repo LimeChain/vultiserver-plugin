@@ -9,7 +9,6 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/eager7/dogd v0.0.0-20200427085516-2caf59f59dbb
 	github.com/ethereum/go-ethereum v1.13.12
-	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/go-playground/validator/v10 v10.25.0
 	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.25.0
