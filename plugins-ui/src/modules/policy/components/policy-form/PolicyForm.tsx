@@ -9,8 +9,7 @@ import { TitleFieldTemplate } from "../policy-title/PolicyTitle";
 import TokenSelector from "@/modules/shared/token-selector/TokenSelector";
 import WeiConverter from "@/modules/shared/wei-converter/WeiConverter";
 import { RJSFSchema, RJSFValidationError } from "@rjsf/utils";
-import schema from "../../schema/schema.json";
-import uiSchema from "../../schema/uiSchema.json";
+import formSchema from "../../schema/formSchema.json";
 
 type PolicyFormProps = {
   data?: PluginPolicy;
@@ -82,8 +81,8 @@ const PolicyForm = ({ data, onSubmitCallback }: PolicyFormProps) => {
       <Form
         key={formKey} // Forces full re-render on reset
         idPrefix="dca" // todo this should be dynamic once we have the marketplace
-        schema={schema as RJSFSchema}
-        uiSchema={uiSchema}
+        schema={formSchema.schema as RJSFSchema}
+        uiSchema={formSchema.uiSchema}
         validator={validator}
         formData={formData}
         onSubmit={onSubmit}
