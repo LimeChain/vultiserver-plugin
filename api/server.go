@@ -763,6 +763,7 @@ func (s *Server) AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		s.logger.Info("Token validated successfully")
 		return next(c)
 	}
+}
 
 // TODO: Make those handlers require jwt auth
 func (s *Server) CreateTransaction(c echo.Context) error {

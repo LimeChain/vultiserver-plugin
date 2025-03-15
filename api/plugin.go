@@ -1,19 +1,15 @@
 package api
 
 import (
-	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/eager7/dogd/btcec"
 	"github.com/google/uuid"
-	"github.com/vultisig/mobile-tss-lib/tss"
 	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/internal/sigutil"
@@ -26,7 +22,6 @@ import (
 
 	gcommon "github.com/ethereum/go-ethereum/common"
 	gtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
@@ -364,7 +359,7 @@ func (s *Server) DeletePluginPolicyById(c echo.Context) error {
 		s.logger.Error(err)
 		return c.JSON(http.StatusInternalServerError, message)
 	}
-  
+
 	// This is because we have different signature stored in the database.
 	policy.Signature = reqBody.Signature
 
@@ -467,7 +462,7 @@ func (s *Server) verifyPolicySignature(policy types.PluginPolicy, update bool) b
 		s.logger.Error(fmt.Errorf("failed to decode message bytes: %w", err))
 		return false
 	}
-  
+
 	signatureBytes, err := hex.DecodeString(strings.TrimPrefix(policy.Signature, "0x"))
 	if err != nil {
 		s.logger.Error(fmt.Errorf("failed to decode signature bytes: %w", err))

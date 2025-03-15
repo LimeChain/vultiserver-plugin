@@ -37,7 +37,7 @@ const (
 )
 
 const (
-	vaultPassword    = ""                                                     // TODO:
+	vaultPassword    = "Nontestato75"                                                     // TODO:
 	hexEncryptionKey = "ee6438289ea754200d5c20de699f5e17761e76eaa0e36804780a5b574fb33815" // TODO:
 
 )
