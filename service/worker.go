@@ -46,10 +46,11 @@ type WorkerService struct {
 	db           storage.DatabaseStorage
 	rpcClient    *ethclient.Client
 	syncer       syncer.PolicySyncer
+	authService  *AuthService
 }
 
 // NewWorker creates a new worker service
-func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Client, syncer syncer.PolicySyncer, blockStorage *storage.BlockStorage, inspector *asynq.Inspector) (*WorkerService, error) {
+func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Client, syncer syncer.PolicySyncer, authService *AuthService, blockStorage *storage.BlockStorage, inspector *asynq.Inspector) (*WorkerService, error) {
 	logger := logrus.WithField("service", "worker").Logger
 
 	redis, err := storage.NewRedisStorage(cfg)
@@ -102,6 +103,7 @@ func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Cl
 		plugin:       plugin,
 		logger:       logger,
 		syncer:       syncer,
+		authService:  authService,
 	}, nil
 }
 
@@ -400,6 +402,11 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 		return fmt.Errorf("failed to create signing request: %v: %w", err, asynq.SkipRetry)
 	}
 
+	jwtToken, err := s.authService.GenerateToken()
+	if err != nil {
+		s.logger.Errorf("Failed to generate jwt token: %v", err)
+	}
+
 	for _, signRequest := range signRequests {
 		policyUUID, err := uuid.Parse(signRequest.PolicyID)
 		if err != nil {
@@ -428,7 +435,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			continue
 		}
 
-		if err := s.syncer.SyncTransaction("create", newTx); err != nil {
+		if err := s.syncer.SyncTransaction("create", jwtToken, newTx); err != nil {
 			s.logger.Errorf("Failed to sync transaction: %v", err)
 			continue
 		}
@@ -451,7 +458,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			s.logger.Errorf("Failed to make sign request: %v", err)
 			newTx.Status = types.StatusSigningFailed
 			newTx.Metadata = metadata
-			if err := s.syncer.SyncTransaction("update", newTx); err != nil {
+			if err := s.syncer.SyncTransaction("update", jwtToken, newTx); err != nil {
 				s.logger.Errorf("Failed to sync transaction: %v", err)
 			}
 
@@ -471,7 +478,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			s.logger.Errorf("Failed to sign transaction: %s", string(respBody))
 			newTx.Status = types.StatusSigningFailed
 			newTx.Metadata = metadata
-			if err := s.syncer.SyncTransaction("update", newTx); err != nil {
+			if err := s.syncer.SyncTransaction("update", jwtToken, newTx); err != nil {
 				s.logger.Errorf("Failed to sync transaction: %v", err)
 			}
 			return fmt.Errorf("failed to sign transaction: %s", string(respBody))
@@ -513,7 +520,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 
 			newTx.Status = types.StatusSigningFailed
 			newTx.Metadata = metadata
-			if err := s.syncer.SyncTransaction("update", newTx); err != nil {
+			if err := s.syncer.SyncTransaction("update", jwtToken, newTx); err != nil {
 				s.logger.Errorf("Failed to sync transaction: %v", err)
 			}
 			return err
@@ -527,7 +534,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 		}
 		newTx.Status = types.StatusSigned
 		newTx.Metadata = metadata
-		if err := s.syncer.SyncTransaction("update", newTx); err != nil {
+		if err := s.syncer.SyncTransaction("update", jwtToken, newTx); err != nil {
 			s.logger.Errorf("Failed to sync transaction: %v", err)
 		}
 
@@ -553,7 +560,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			}
 			newTx.Status = types.StatusRejected
 			newTx.Metadata = metadata
-			if err := s.syncer.SyncTransaction("update", newTx); err != nil {
+			if err := s.syncer.SyncTransaction("update", jwtToken, newTx); err != nil {
 			}
 			return fmt.Errorf("fail to complete signing: %w", err)
 		}
@@ -562,7 +569,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 		}
 		newTx.Status = types.StatusMined
 		newTx.Metadata = metadata
-		if err := s.syncer.SyncTransaction("update", newTx); err != nil {
+		if err := s.syncer.SyncTransaction("update", jwtToken, newTx); err != nil {
 			s.logger.Errorf("Failed to sync transaction: %v", err)
 		}
 	}
