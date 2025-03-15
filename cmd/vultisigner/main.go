@@ -56,6 +56,7 @@ func main() {
 		sdClient,
 		blockStorage,
 		cfg.Server.Mode,
+		cfg.Server.JWTSecret,
 		cfg.Server.Plugin.Type,
 		cfg.Server.Database.DSN,
 	)

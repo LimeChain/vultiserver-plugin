@@ -120,7 +120,7 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (signature && typeof signature === "string") {
         policy.signature = signature;
-        await PolicyService.deletePolicy(policyId);
+        await PolicyService.deletePolicy(policyId, signature);
         const updatedPolicyMap = new Map(policyMap);
         updatedPolicyMap.delete(policyId);
         setPolicyMap(updatedPolicyMap);
@@ -143,11 +143,6 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
     const chain = localStorage.getItem("chain") as string;
 
     if (isSupportedChainType(chain)) {
-      policy.public_key = "";
-      policy.signature = "";
-      const serializedPolicy = JSON.stringify(policy);
-      const hexMessage = toHex(serializedPolicy);
-
       let accounts = [];
       if (chain === "ethereum") {
         accounts = await VulticonnectWalletService.getConnectedEthAccounts();
@@ -162,10 +157,14 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("No vaults found");
       }
 
+      policy.public_key = "";
+      policy.signature = "";
       policy.is_ecdsa = true
       policy.chain_code_hex = vaults[0].hexChainCode
       policy.derive_path = "m/44'/60'/0'/0/0"  // TODO: add mapping { ethereum => "m/44'/60'/0'/0/0", thor => ... })
-    
+      const serializedPolicy = JSON.stringify(policy);
+      const hexMessage = toHex(serializedPolicy);
+
       const signature = await VulticonnectWalletService.signCustomMessage(
         hexMessage,
         accounts[0]
