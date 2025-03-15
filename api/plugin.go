@@ -1,14 +1,19 @@
 package api
 
 import (
+	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/eager7/dogd/btcec"
+	"github.com/google/uuid"
+	"github.com/vultisig/mobile-tss-lib/tss"
 	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/internal/sigutil"
@@ -21,8 +26,8 @@ import (
 
 	gcommon "github.com/ethereum/go-ethereum/common"
 	gtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 )
@@ -103,31 +108,10 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 		return fmt.Errorf("fail to marshal to json, err: %w", err)
 	}
 
-	// Create transaction with PENDING status first
-	policyUUID, err := uuid.Parse(req.PolicyID)
+	txToSign, err := s.db.GetTransactionByHash(txHash)
 	if err != nil {
-		s.logger.Errorf("Failed to parse policy ID as UUID: %v", err)
-		return fmt.Errorf("invalid policy ID format: %w", err)
-	}
-
-	metadata := map[string]interface{}{
-		"timestamp":  time.Now().Format(time.RFC3339),
-		"plugin_id":  req.PluginID,
-		"public_key": req.PublicKey,
-		"session_id": req.SessionID,
-	}
-
-	newTx := types.TransactionHistory{
-		PolicyID: policyUUID,
-		TxBody:   req.Transaction,
-		Status:   types.StatusPending,
-		Metadata: metadata,
-	}
-
-	txID, err := s.db.CreateTransactionHistory(newTx)
-	if err != nil {
-		s.logger.Errorf("Failed to create transaction history: %v", err)
-		return fmt.Errorf("failed to create transaction record: %w", err)
+		s.logger.Errorf("Failed to get transaction by hash from database: %v", err)
+		return fmt.Errorf("fail to get transaction by hash: %w", err)
 	}
 
 	s.logger.Debug("PLUGIN SERVER: KEYSIGN TASK")
@@ -140,15 +124,15 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 		asynq.Queue(tasks.QUEUE_NAME))
 
 	if err != nil {
-		metadata["error"] = err.Error()
-		if updateErr := s.db.UpdateTransactionStatus(txID, types.StatusSigningFailed, metadata); updateErr != nil {
+		txToSign.Metadata["error"] = err.Error()
+		if updateErr := s.db.UpdateTransactionStatus(txToSign.ID, types.StatusSigningFailed, txToSign.Metadata); updateErr != nil {
 			s.logger.Errorf("Failed to update transaction status: %v", updateErr)
 		}
 		return fmt.Errorf("fail to enqueue task, err: %w", err)
 	}
 
-	metadata["task_id"] = ti.ID
-	if err := s.db.UpdateTransactionStatus(txID, types.StatusSigned, metadata); err != nil {
+	txToSign.Metadata["task_id"] = ti.ID
+	if err := s.db.UpdateTransactionStatus(txToSign.ID, types.StatusSigned, txToSign.Metadata); err != nil {
 		s.logger.Errorf("Failed to update transaction with task ID: %v", err)
 	}
 
@@ -380,6 +364,7 @@ func (s *Server) DeletePluginPolicyById(c echo.Context) error {
 		s.logger.Error(err)
 		return c.JSON(http.StatusInternalServerError, message)
 	}
+  
 	// This is because we have different signature stored in the database.
 	policy.Signature = reqBody.Signature
 
@@ -482,6 +467,7 @@ func (s *Server) verifyPolicySignature(policy types.PluginPolicy, update bool) b
 		s.logger.Error(fmt.Errorf("failed to decode message bytes: %w", err))
 		return false
 	}
+  
 	signatureBytes, err := hex.DecodeString(strings.TrimPrefix(policy.Signature, "0x"))
 	if err != nil {
 		s.logger.Error(fmt.Errorf("failed to decode signature bytes: %w", err))

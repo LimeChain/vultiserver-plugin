@@ -164,7 +164,7 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
       policy.derive_path = "m/44'/60'/0'/0/0"  // TODO: add mapping { ethereum => "m/44'/60'/0'/0/0", thor => ... })
       const serializedPolicy = JSON.stringify(policy);
       const hexMessage = toHex(serializedPolicy);
-
+      
       const signature = await VulticonnectWalletService.signCustomMessage(
         hexMessage,
         accounts[0]

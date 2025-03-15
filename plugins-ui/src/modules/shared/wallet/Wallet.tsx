@@ -46,7 +46,7 @@ const Wallet = () => {
             chainCodeHex,
             derivePath
           );
-          console.log(token)
+          
           localStorage.setItem("authToken", token);
           break;
         }
