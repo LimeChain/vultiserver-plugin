@@ -23,6 +23,7 @@ type DatabaseStorage interface {
 
 	FindPricingById(ctx context.Context, id string) (*types.Pricing, error)
 	CreatePricing(ctx context.Context, pricingDto types.PricingCreateDto) (*types.Pricing, error)
+	DeletePricingById(ctx context.Context, id string) error
 
 	CreateTimeTriggerTx(ctx context.Context, dbTx pgx.Tx, trigger types.TimeTrigger) error
 	GetPendingTimeTriggers(ctx context.Context) ([]types.TimeTrigger, error)

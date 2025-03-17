@@ -547,6 +547,29 @@ func (s *Server) CreatePricing(c echo.Context) error {
 	return c.JSON(http.StatusOK, created)
 }
 
+func (s *Server) DeletePricing(c echo.Context) error {
+	pricingID := c.Param("pricingId")
+	if pricingID == "" {
+		message := echo.Map{
+			"message": "failed to get pricing",
+			"error":   "pricing id is required",
+		}
+		return c.JSON(http.StatusBadRequest, message)
+	}
+
+	err := s.db.DeletePricingById(c.Request().Context(), pricingID)
+	if err != nil {
+		message := echo.Map{
+			"message": "failed to delete pricing",
+			"error":   err.Error(),
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
 func (s *Server) GetPlugins(c echo.Context) error {
 	plugins, err := s.db.FindPlugins(c.Request().Context())
 	if err != nil {
@@ -607,4 +630,14 @@ func (s *Server) CreatePlugin(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, created)
+}
+
+func (s *Server) UpdatePlugin(c echo.Context) error {
+	// TODO
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (s *Server) DeletePlugin(c echo.Context) error {
+	// TODO
+	return c.NoContent(http.StatusNoContent)
 }

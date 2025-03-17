@@ -213,10 +213,13 @@ func (s *Server) StartServer() error {
 		pluginsGroup.GET("", s.GetPlugins)
 		pluginsGroup.GET("/:pluginId", s.GetPlugin)
 		pluginsGroup.POST("", s.CreatePlugin, s.authMiddleware)
+		pluginsGroup.PUT("/:pluginId", s.UpdatePlugin, s.authMiddleware)
+		pluginsGroup.DELETE("/:pluginId", s.DeletePlugin, s.authMiddleware)
 
 		pricingsGroup := e.Group("/pricings")
 		pricingsGroup.GET("/:pricingId", s.GetPricing)
 		pricingsGroup.POST("", s.CreatePricing, s.authMiddleware)
+		pricingsGroup.DELETE("/:pricingId", s.DeletePricing, s.authMiddleware)
 	}
 
 	return e.Start(fmt.Sprintf(":%d", s.port))
