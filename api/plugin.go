@@ -492,6 +492,12 @@ func (s *Server) Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, echo.Map{"token": token})
 }
 
+func (s *Server) GetLoggedUser(c echo.Context) error {
+	user := c.Get("user")
+
+	return c.JSON(http.StatusOK, user)
+}
+
 func (s *Server) GetPricing(c echo.Context) error {
 	pricingID := c.Param("pricingId")
 	if pricingID == "" {

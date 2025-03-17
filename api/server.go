@@ -207,6 +207,7 @@ func (s *Server) StartServer() error {
 
 	if s.mode == "verifier" {
 		e.POST("/login", s.Login)
+		e.GET("/users/me", s.GetLoggedUser, s.authMiddleware)
 
 		pluginsGroup := e.Group("/plugins")
 		pluginsGroup.GET("", s.GetPlugins)
