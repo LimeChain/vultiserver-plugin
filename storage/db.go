@@ -37,6 +37,8 @@ type DatabaseStorage interface {
 	FindPlugins(ctx context.Context) ([]types.Plugin, error)
 	FindPluginById(ctx context.Context, id string) (*types.Plugin, error)
 	CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (*types.Plugin, error)
+	UpdatePlugin(ctx context.Context, id string, updates types.PluginUpdateDto) (*types.Plugin, error)
+	DeletePluginById(ctx context.Context, id string) error
 
 	Pool() *pgxpool.Pool
 }

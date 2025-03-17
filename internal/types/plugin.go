@@ -18,3 +18,12 @@ type PluginCreateDto struct {
 	ServerEndpoint string          `json:"server_endpoint" validate:"required"`
 	PricingID      string          `json:"pricing_id" validate:"required"`
 }
+
+// using references on struct fields allows us to process partially field DTOs
+type PluginUpdateDto struct {
+	Title          *string          `json:"title"`
+	Description    *string          `json:"description"`
+	Metadata       *json.RawMessage `json:"metadata"`
+	ServerEndpoint *string          `json:"server_endpoint"`
+	PricingID      *string          `json:"pricing_id"`
+}
