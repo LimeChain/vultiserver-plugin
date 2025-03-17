@@ -8,7 +8,6 @@ type Plugin struct {
 	Description    string          `json:"description" validate:"required"`
 	Metadata       json.RawMessage `json:"metadata" validate:"required"`
 	ServerEndpoint string          `json:"server_endpoint" validate:"required"`
-	PublicKey      string          `json:"public_key" validate:"required"`
 	PricingID      string          `json:"pricing_id" validate:"required"`
 }
 
@@ -17,6 +16,5 @@ type PluginCreateDto struct {
 	Description    string          `json:"description" validate:"required"`
 	Metadata       json.RawMessage `json:"metadata" validate:"required"`
 	ServerEndpoint string          `json:"server_endpoint" validate:"required"`
-	PublicKey      string          `json:"public_key" validate:"required"`
 	PricingID      string          `json:"pricing_id" validate:"required"`
 }
