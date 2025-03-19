@@ -215,16 +215,16 @@ func (s *Server) StartServer() error {
 	pluginGroup.DELETE("/policy/:policyId", s.DeletePluginPolicyById)
 
 	if s.mode == "verifier" {
-		e.POST("/login", s.Login)
+		e.POST("/login", s.UserLogin)
 
 		pluginsGroup := e.Group("/plugins")
 		pluginsGroup.GET("", s.GetPlugins)
 		pluginsGroup.GET("/:pluginId", s.GetPlugin)
-		pluginsGroup.POST("", s.CreatePlugin, s.authMiddleware)
+		pluginsGroup.POST("", s.CreatePlugin, s.userAuthMiddleware)
 
 		pricingsGroup := e.Group("/pricings")
 		pricingsGroup.GET("/:pricingId", s.GetPricing)
-		pricingsGroup.POST("", s.CreatePricing, s.authMiddleware)
+		pricingsGroup.POST("", s.CreatePricing, s.userAuthMiddleware)
 	}
 
 	syncGroup := e.Group("/sync")
