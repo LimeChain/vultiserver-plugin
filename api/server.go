@@ -10,11 +10,13 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/internal/scheduler"
+	"github.com/vultisig/vultisigner/internal/sigutil"
 	"github.com/vultisig/vultisigner/internal/syncer"
 	"github.com/vultisig/vultisigner/internal/tasks"
 	"github.com/vultisig/vultisigner/internal/types"
@@ -41,41 +43,45 @@ import (
 
 type Server struct {
 	port          int64
+	db            storage.DatabaseStorage
 	redis         *storage.RedisStorage
+	blockStorage  *storage.BlockStorage
 	client        *asynq.Client
 	inspector     *asynq.Inspector
-	vaultFilePath string
 	sdClient      *statsd.Client
-	logger        *logrus.Logger
-	blockStorage  *storage.BlockStorage
-	mode          string
-	plugin        plugin.Plugin
-	db            storage.DatabaseStorage
+	rpcClient     *ethclient.Client
 	scheduler     *scheduler.SchedulerService
-	syncer        syncer.PolicySyncer
 	policyService service.Policy
+	authService   *service.AuthService
+	syncer        syncer.PolicySyncer
+	plugin        plugin.Plugin
+	logger        *logrus.Logger
+	vaultFilePath string
+	mode          string
 }
 
 // NewServer returns a new server.
-func NewServer(port int64,
+func NewServer(
+	port int64,
+	db *postgres.PostgresBackend,
 	redis *storage.RedisStorage,
+	blockStorage *storage.BlockStorage,
 	redisOpts asynq.RedisClientOpt,
 	client *asynq.Client,
 	inspector *asynq.Inspector,
-	vaultFilePath string,
 	sdClient *statsd.Client,
-	blockStorage *storage.BlockStorage,
+	vaultFilePath string,
 	mode string,
+	jwtSecret string,
 	pluginType string,
-	dsn string) *Server {
-	logger := logrus.WithField("service", "api").Logger
-
-	logger.Info("Initializing new server...")
+	rpcURL string,
+	logger *logrus.Logger,
+) *Server {
 	logger.Infof("Server mode: %s, plugin type: %s", mode, pluginType)
 
-	db, err := postgres.NewPostgresBackend(false, dsn)
+	rpcClient, err := ethclient.Dial(rpcURL)
 	if err != nil {
-		logger.Fatalf("Failed to connect to database: %v", err)
+		logger.Fatal("failed to initialize rpc client", err)
 	}
 
 	var plugin plugin.Plugin
@@ -84,15 +90,11 @@ func NewServer(port int64,
 	if mode == "plugin" {
 		switch pluginType {
 		case "payroll":
-			plugin = payroll.NewPayrollPlugin(db)
+			plugin = payroll.NewPayrollPlugin(db, logrus.WithField("service", "plugin").Logger, rpcClient)
 		case "dca":
 			cfg, err := config.ReadConfig("config-plugin")
 			if err != nil {
 				logger.Fatal("failed to read plugin config", err)
-			}
-			rpcClient, err := ethclient.Dial(cfg.Server.Plugin.Eth.Rpc)
-			if err != nil {
-				logger.Fatal("failed to initialize rpc client", err)
 			}
 			uniswapV2RouterAddress := gcommon.HexToAddress(cfg.Server.Plugin.Eth.Uniswap.V2Router)
 			uniswapCfg := uniswap.NewConfig(
@@ -132,6 +134,8 @@ func NewServer(port int64,
 		logger.Fatalf("Failed to initialize policy service: %v", err)
 	}
 
+	authService := service.NewAuthService(jwtSecret)
+
 	return &Server{
 		port:          port,
 		redis:         redis,
@@ -147,6 +151,7 @@ func NewServer(port int64,
 		logger:        logger,
 		syncer:        syncerService,
 		policyService: policyService,
+		authService:   authService,
 	}
 }
 
@@ -169,6 +174,10 @@ func (s *Server) StartServer() error {
 	e.GET("/getDerivedPublicKey", s.GetDerivedPublicKey)
 	e.POST("/signFromPlugin", s.SignPluginMessages)
 
+	// Auth token
+	e.POST("/auth", s.Auth)
+	e.POST("/auth/refresh", s.RefreshToken)
+
 	grp := e.Group("/vault")
 	grp.POST("/create", s.CreateVault)
 	grp.POST("/reshare", s.ReshareVault)
@@ -183,10 +192,9 @@ func (s *Server) StartServer() error {
 	grp.GET("/sign/response/:taskId", s.GetKeysignResult) // Get keysign result
 
 	pluginGroup := e.Group("/plugin")
+
 	// Only enable plugin signing routes if the server is running in plugin mode
 	if s.mode == "plugin" {
-		// pluginGroup.POST("/sign", s.SignPluginMessages)
-
 		configGroup := pluginGroup.Group("/configure")
 
 		configGroup.Use(middleware.StaticWithConfig(middleware.StaticConfig{
@@ -197,12 +205,13 @@ func (s *Server) StartServer() error {
 			Filesystem: http.FS(s.plugin.Frontend()),
 		}))
 	}
+
 	// policy mode is always available since it is used by both verifier server and plugin server
 	pluginGroup.POST("/policy", s.CreatePluginPolicy)
-	pluginGroup.GET("/policy", s.GetAllPluginPolicies)
 	pluginGroup.PUT("/policy", s.UpdatePluginPolicyById)
-	pluginGroup.GET("/policy/history/:policyId", s.GetPluginPolicyTransactionHistory)
-	pluginGroup.GET("/policy/:policyId", s.GetPluginPolicyById)
+	pluginGroup.GET("/policy", s.GetAllPluginPolicies, s.AuthMiddleware)
+	pluginGroup.GET("/policy/history/:policyId", s.GetPluginPolicyTransactionHistory, s.AuthMiddleware)
+	pluginGroup.GET("/policy/:policyId", s.GetPluginPolicyById, s.AuthMiddleware)
 	pluginGroup.DELETE("/policy/:policyId", s.DeletePluginPolicyById)
 
 	if s.mode == "verifier" {
@@ -213,6 +222,7 @@ func (s *Server) StartServer() error {
 	}
 
 	syncGroup := e.Group("/sync")
+	syncGroup.Use(s.AuthMiddleware)
 	syncGroup.POST("/transaction", s.CreateTransaction)
 	syncGroup.PUT("/transaction", s.UpdateTransaction)
 
@@ -276,7 +286,7 @@ func (s *Server) CreateVault(c echo.Context) error {
 		s.logger.Errorf("fail to set session, err: %v", err)
 	}
 	_, err = s.client.Enqueue(asynq.NewTask(tasks.TypeKeyGeneration, buf),
-		asynq.MaxRetry(-1),
+		asynq.MaxRetry(0),
 		asynq.Timeout(7*time.Minute),
 		asynq.Retention(10*time.Minute),
 		asynq.Queue(tasks.QUEUE_NAME))
@@ -308,7 +318,7 @@ func (s *Server) ReshareVault(c echo.Context) error {
 		s.logger.Errorf("fail to set session, err: %v", err)
 	}
 	_, err = s.client.Enqueue(asynq.NewTask(tasks.TypeReshare, buf),
-		asynq.MaxRetry(-1),
+		asynq.MaxRetry(0),
 		asynq.Timeout(7*time.Minute),
 		asynq.Retention(10*time.Minute),
 		asynq.Queue(tasks.QUEUE_NAME))
@@ -335,7 +345,9 @@ func (s *Server) UploadVault(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("fail to decrypt vault from the backup, err: %w", err)
 	}
-	if err := s.blockStorage.UploadFile(content, vault.PublicKeyEcdsa+".bak"); err != nil {
+
+	filePathName := common.GetVaultBackupFilename(vault.PublicKeyEcdsa)
+	if err := s.blockStorage.UploadFile(content, filePathName); err != nil {
 		return fmt.Errorf("fail to upload file, err: %w", err)
 	}
 
@@ -356,7 +368,8 @@ func (s *Server) DownloadVault(c echo.Context) error {
 		return fmt.Errorf("fail to extract password, err: %w", err)
 	}
 
-	content, err := s.blockStorage.GetFile(publicKeyECDSA + ".bak")
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		wrappedErr := fmt.Errorf("fail to read file in DownloadVault, err: %w", err)
 		s.logger.Error(wrappedErr)
@@ -399,7 +412,9 @@ func (s *Server) GetVault(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("fail to extract password, err: %w", err)
 	}
-	content, err := s.blockStorage.GetFile(publicKeyECDSA + ".bak")
+
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		wrappedErr := fmt.Errorf("fail to read file in GetVault, err: %w", err)
 		s.logger.Error(wrappedErr)
@@ -434,7 +449,8 @@ func (s *Server) DeleteVault(c echo.Context) error {
 		return fmt.Errorf("fail to extract password, err: %w", err)
 	}
 
-	content, err := s.blockStorage.GetFile(publicKeyECDSA + ".bak")
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		wrappedErr := fmt.Errorf("fail to read file in DeleteVault, err: %w", err)
 		s.logger.Error(wrappedErr)
@@ -446,7 +462,8 @@ func (s *Server) DeleteVault(c echo.Context) error {
 		return fmt.Errorf("fail to decrypt vault from the backup, err: %w", err)
 	}
 	s.logger.Infof("removing vault file %s per request", vault.PublicKeyEcdsa)
-	err = s.blockStorage.DeleteFile(publicKeyECDSA + ".bak")
+
+	err = s.blockStorage.DeleteFile(filePathName)
 	if err != nil {
 		return fmt.Errorf("fail to remove file, err: %w", err)
 	}
@@ -477,7 +494,7 @@ func (s *Server) SignMessages(c echo.Context) error {
 		s.logger.Errorf("fail to set session, err: %v", err)
 	}
 
-	filePathName := req.PublicKey + ".bak"
+	filePathName := common.GetVaultBackupFilename(req.PublicKey)
 	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		wrappedErr := fmt.Errorf("fail to read file in SignMessages, err: %w", err)
@@ -496,7 +513,7 @@ func (s *Server) SignMessages(c echo.Context) error {
 	}
 	ti, err := s.client.EnqueueContext(c.Request().Context(),
 		asynq.NewTask(tasks.TypeKeySign, buf),
-		asynq.MaxRetry(-1),
+		asynq.MaxRetry(0),
 		asynq.Timeout(2*time.Minute),
 		asynq.Retention(5*time.Minute),
 		asynq.Queue(tasks.QUEUE_NAME))
@@ -543,7 +560,8 @@ func (s *Server) ExistVault(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	exist, err := s.blockStorage.FileExist(publicKeyECDSA + ".bak")
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	exist, err := s.blockStorage.FileExist(filePathName)
 	if err != nil || !exist {
 		return c.NoContent(http.StatusBadRequest)
 	}
@@ -580,7 +598,9 @@ func (s *Server) ResendVaultEmail(c echo.Context) error {
 		s.logger.Errorln("password is required")
 		return c.NoContent(http.StatusBadRequest)
 	}
-	content, err := s.blockStorage.GetFile(publicKeyECDSA + ".bak")
+
+	filePathName := common.GetVaultBackupFilename(publicKeyECDSA)
+	content, err := s.blockStorage.GetFile(filePathName)
 	if err != nil {
 		s.logger.Errorf("fail to read file in ResendVaultEmail, err: %v", err)
 		return c.NoContent(http.StatusBadRequest)
@@ -668,12 +688,12 @@ func (s *Server) CreateTransaction(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	existingTx, _ := s.db.GetTransactionByHash(reqTx.TxHash)
+	existingTx, _ := s.db.GetTransactionByHash(c.Request().Context(), reqTx.TxHash)
 	if existingTx != nil {
 		return c.NoContent(http.StatusConflict)
 	}
 
-	if _, err := s.db.CreateTransactionHistory(reqTx); err != nil {
+	if _, err := s.db.CreateTransactionHistory(c.Request().Context(), reqTx); err != nil {
 		s.logger.Errorf("fail to create transaction, err: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -686,14 +706,94 @@ func (s *Server) UpdateTransaction(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	existingTx, _ := s.db.GetTransactionByHash(reqTx.TxHash)
+	existingTx, _ := s.db.GetTransactionByHash(c.Request().Context(), reqTx.TxHash)
 	if existingTx == nil {
 		return c.NoContent(http.StatusNotFound)
 	}
 
-	if err := s.db.UpdateTransactionStatus(existingTx.ID, reqTx.Status, reqTx.Metadata); err != nil {
+	if err := s.db.UpdateTransactionStatus(c.Request().Context(), existingTx.ID, reqTx.Status, reqTx.Metadata); err != nil {
 		s.logger.Errorf("fail to update transaction status, err: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	return c.NoContent(http.StatusOK)
+}
+
+func (s *Server) Auth(c echo.Context) error {
+	var req struct {
+		Message      string `json:"message"`
+		Signature    string `json:"signature"`
+		DerivePath   string `json:"derive_path"`
+		ChainCodeHex string `json:"chain_code_hex"`
+		PublicKey    string `json:"public_key"`
+	}
+
+	if err := c.Bind(&req); err != nil {
+		return c.NoContent(http.StatusBadRequest)
+	}
+
+	msgBytes, err := hex.DecodeString(strings.TrimPrefix(req.Message, "0x"))
+	if err != nil {
+		s.logger.Errorf("failed to decode message: %v", err)
+		return c.NoContent(http.StatusBadRequest)
+	}
+
+	sigBytes, err := hex.DecodeString(strings.TrimPrefix(req.Signature, "0x"))
+	if err != nil {
+		s.logger.Errorf("failed to decode signature: %v", err)
+		return c.NoContent(http.StatusBadRequest)
+	}
+
+	success, err := sigutil.VerifySignature(req.PublicKey, req.ChainCodeHex, req.DerivePath, msgBytes, sigBytes)
+	if err != nil {
+		s.logger.Errorf("signature verification failed: %v", err)
+		return c.NoContent(http.StatusUnauthorized)
+	}
+	if !success {
+		return c.NoContent(http.StatusUnauthorized)
+	}
+
+	token, err := s.authService.GenerateToken()
+	if err != nil {
+		s.logger.Error("failed to generate token:", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"token": token})
+}
+
+func (s *Server) RefreshToken(c echo.Context) error {
+	var req struct {
+		Token string `json:"token"`
+	}
+
+	if err := c.Bind(&req); err != nil {
+		s.logger.Errorf("fail to decode token, err: %v", err)
+		return c.NoContent(http.StatusBadRequest)
+	}
+
+	newToken, err := s.authService.RefreshToken(req.Token)
+	if err != nil {
+		s.logger.Errorf("fail to refresh token, err: %v", err)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid or expired token"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"token": newToken})
+}
+
+func (s *Server) AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		authHeader := c.Request().Header.Get("Authorization")
+		if authHeader == "" {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Missing Authorization header"})
+		}
+
+		tokenStr := authHeader[len("Bearer "):]
+		_, err := s.authService.ValidateToken(tokenStr)
+		if err != nil {
+			s.logger.Warnf("fail to validate token, err: %v", err)
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		}
+		s.logger.Info("Token validated successfully")
+		return next(c)
+	}
 }
