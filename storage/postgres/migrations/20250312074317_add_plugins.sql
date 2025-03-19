@@ -2,6 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS plugins (
     id SERIAL PRIMARY KEY,
+    type VARCHAR(255) NOT NULL UNIQUE,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     metadata JSONB NOT NULL,

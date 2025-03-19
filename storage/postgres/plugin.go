@@ -48,12 +48,14 @@ func (p *PostgresBackend) FindPlugins(ctx context.Context) ([]types.Plugin, erro
 
 func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (*types.Plugin, error) {
 	query := fmt.Sprintf(`INSERT INTO %s (
+		type,
 		title,
 		description,
 		metadata,
 		server_endpoint,
 		pricing_id
 	) VALUES (
+		@Type,
 		@Title,
 		@Description,
 		@Metadata,
@@ -61,6 +63,7 @@ func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.Plug
 		@PricingID
 	) RETURNING id;`, PLUGINS_TABLE)
 	args := pgx.NamedArgs{
+		"Type":           pluginDto.Type,
 		"Title":          pluginDto.Title,
 		"Description":    pluginDto.Description,
 		"Metadata":       pluginDto.Metadata,
