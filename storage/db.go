@@ -30,9 +30,16 @@ type DatabaseStorage interface {
 	UpdateTimeTriggerLastExecution(ctx context.Context, policyID string) error
 	UpdateTimeTriggerTx(ctx context.Context, policyID string, trigger types.TimeTrigger, dbTx pgx.Tx) error
 
-	CreateTransactionHistory(tx types.TransactionHistory) (uuid.UUID, error)
-	UpdateTransactionStatus(txID uuid.UUID, status types.TransactionStatus, metadata map[string]interface{}) error
-	GetTransactionHistory(policyID uuid.UUID, take int, skip int) ([]types.TransactionHistory, error)
+	DeleteTimeTrigger(ctx context.Context, policyID string) error
+	UpdateTriggerStatus(ctx context.Context, policyID string, status types.TimeTriggerStatus) error
+	GetTriggerStatus(ctx context.Context, policyID string) (types.TimeTriggerStatus, error)
+
+	CreateTransactionHistoryTx(ctx context.Context, dbTx pgx.Tx, tx types.TransactionHistory) (uuid.UUID, error)
+	UpdateTransactionStatusTx(ctx context.Context, dbTx pgx.Tx, txID uuid.UUID, status types.TransactionStatus, metadata map[string]interface{}) error
+	CreateTransactionHistory(ctx context.Context, tx types.TransactionHistory) (uuid.UUID, error)
+	UpdateTransactionStatus(ctx context.Context, txID uuid.UUID, status types.TransactionStatus, metadata map[string]interface{}) error
+	GetTransactionHistory(ctx context.Context, policyID uuid.UUID, take int, skip int) ([]types.TransactionHistory, error)
+	GetTransactionByHash(ctx context.Context, txHash string) (*types.TransactionHistory, error)
 
 	FindPlugins(ctx context.Context) ([]types.Plugin, error)
 	FindPluginById(ctx context.Context, id string) (*types.Plugin, error)

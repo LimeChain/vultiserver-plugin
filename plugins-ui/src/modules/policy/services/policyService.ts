@@ -1,6 +1,8 @@
 import { post, get, put, remove } from "@/modules/core/services/httpService";
 import { PluginPolicy, PolicyTransactionHistory } from "../models/policy";
 
+const PUBLIC_KEY = import.meta.env.VITE_PUBLIC_KEY;
+
 const PolicyService = {
   /**
    * Posts a new policy to the API.
@@ -44,8 +46,8 @@ const PolicyService = {
       const newPolicy = await get(endpoint, {
         headers: {
           plugin_type: "dca", // todo remove hardcoding once we have the marketplace
-          public_key:
-            "03f81429f8a999a616b3dee64f30eddee5dfb8e4d6881b79f5a86c8b69b4d7d1d7", // TODO: get Vault's pub key
+          public_key: PUBLIC_KEY, // TODO: get Vault's pub key
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
       });
       return newPolicy;
@@ -66,13 +68,14 @@ const PolicyService = {
       const endpoint = `/plugin/policy/history/${policyId}`;
       const history = await get(endpoint, {
         headers: {
-          public_key:
-            "03f81429f8a999a616b3dee64f30eddee5dfb8e4d6881b79f5a86c8b69b4d7d1d7", // TODO: get Vault's pub key
+          public_key: PUBLIC_KEY, // TODO: get Vault's pub key
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
       });
       return history;
     } catch (error) {
-      console.error("Error getting policies:", error);
+      console.error("Error getting policy history:", error);
+
       throw error;
     }
   },
@@ -81,12 +84,14 @@ const PolicyService = {
    * Delete policy from the API.
    * @param {id} string - The policy to be deleted.
    */
-  deletePolicy: async (id: string) => {
+  deletePolicy: async (id: string, signature: string) => {
     try {
       const endpoint = `/plugin/policy/${id}`;
-      return remove(endpoint);
+      return await remove(endpoint, {
+        signature: signature,
+      });
     } catch (error) {
-      console.error("Error getting policies:", error);
+      console.error("Error deleting policy:", error);
       throw error;
     }
   },

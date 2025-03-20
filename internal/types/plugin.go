@@ -4,6 +4,7 @@ import "encoding/json"
 
 type Plugin struct {
 	ID             string          `json:"id" validate:"required"`
+	Type           string          `json:"type" validate:"required"`
 	Title          string          `json:"title" validate:"required"`
 	Description    string          `json:"description" validate:"required"`
 	Metadata       json.RawMessage `json:"metadata" validate:"required"`
@@ -12,6 +13,7 @@ type Plugin struct {
 }
 
 type PluginCreateDto struct {
+	Type           string          `json:"type" validate:"required"`
 	Title          string          `json:"title" validate:"required"`
 	Description    string          `json:"description" validate:"required"`
 	Metadata       json.RawMessage `json:"metadata" validate:"required"`

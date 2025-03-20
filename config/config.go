@@ -16,6 +16,7 @@ type Config struct {
 		} `mapstructure:"database" json:"database,omitempty"`
 		VaultsFilePath string `mapstructure:"vaults_file_path" json:"vaults_file_path,omitempty"`
 		Mode           string `mapstructure:"mode" json:"mode,omitempty"`
+		JWTSecret      string `mapstructure:"jwt_secret" json:"jwt_secret,omitempty"`
 		Plugin         struct {
 			Type string `mapstructure:"type" json:"type,omitempty"`
 			Eth  struct {
@@ -26,9 +27,9 @@ type Config struct {
 				} `mapstructure:"uniswap" json:"uniswap,omitempty"`
 			} `mapstructure:"eth" json:"eth,omitempty"`
 		} `mapstructure:"plugin" json:"plugin,omitempty"`
-		Auth struct {
+		UserAuth struct {
 			JwtSecret string `mapstructure:"jwt_secret" json:"jwt_secret,omitempty"`
-		} `mapstructure:"auth" json:"auth,omitempty"`
+		} `mapstructure:"user_auth" json:"auth,omitempty"`
 	} `mapstructure:"server" json:"server"`
 
 	Redis struct {

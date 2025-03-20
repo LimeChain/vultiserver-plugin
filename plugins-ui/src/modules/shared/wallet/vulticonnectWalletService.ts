@@ -1,4 +1,6 @@
 // more on the exposed methods here: https://github.com/vultisig/vultisig-windows/blob/main/clients/extension/docs/integration-guide.md
+import { post } from "@/modules/core/services/httpService";
+
 interface ProviderError {
   code: number;
   message: string;
@@ -8,6 +10,7 @@ const VulticonnectWalletService = {
   connectToVultiConnect: async () => {
     if (!window.vultisig?.ethereum) {
       alert(`No ethereum provider found. Please install VultiConnect.`);
+      return;
     }
 
     try {
@@ -26,6 +29,7 @@ const VulticonnectWalletService = {
   getConnectedEthAccounts: async () => {
     if (!window.vultisig?.ethereum) {
       alert(`No ethereum provider found. Please install VultiConnect.`);
+      return;
     }
 
     try {
@@ -46,6 +50,7 @@ const VulticonnectWalletService = {
   signCustomMessage: async (hexMessage: string, walletAddress: string) => {
     if (!window.vultisig?.ethereum) {
       alert(`No ethereum provider found. Please install VultiConnect.`);
+      return;
     }
 
     try {
@@ -63,6 +68,37 @@ const VulticonnectWalletService = {
       throw new Error("Failed to sign the message");
     }
   },
+
+  getAuthToken: async (message: string, signature: string, publicKey: string, chainCodeHex: string, derivePath: string) => {
+    try {
+      const response = await post('/auth', {
+        "message": message,
+        "signature": signature,
+        "public_key": publicKey,
+        "chain_code_hex": chainCodeHex,
+        "derive_path": derivePath
+      });
+      return response.token
+    } catch (error) {
+      console.error("Failed to get auth token", error);
+      throw new Error("Failed to get auth token");
+    }
+
+
+  },
+
+  refreshAuthToken: async (token: string) => {
+    try {
+      const response = await post('/auth/refresh', {
+        "token": token,
+      });
+      return response.token;
+    } catch (error) {
+      console.error("Failed to refresh auth token", error);
+      throw new Error("Failed to refresh auth token");
+    }
+
+  }
 };
 
 export default VulticonnectWalletService;

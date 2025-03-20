@@ -7,12 +7,17 @@ export const generatePolicy = (
 ): PluginPolicy => {
   return {
     id: policyId,
-    public_key:
-      "03f81429f8a999a616b3dee64f30eddee5dfb8e4d6881b79f5a86c8b69b4d7d1d7", // TODO: get Vault's pub key
+    public_key: "",
+    is_ecdsa: true,
+    chain_code_hex: "",
+    derive_path: "",
+    plugin_id: "TODO",
+    plugin_version: "0.0.1",
+    policy_version: "0.0.1",
     plugin_type,
-    active: true,
+    signature: "",
     policy: convertToStrings(policy),
-    signature: "", // todo this should be implemented
+    active: true,
   };
 };
 

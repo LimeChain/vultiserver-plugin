@@ -25,7 +25,7 @@ func (s *Server) statsdMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+func (s *Server) userAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cfg, err := config.ReadConfig("config-verifier")
 		if err != nil {
@@ -40,7 +40,7 @@ func (s *Server) authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		tokenStr := authHeader[len("Bearer "):]
 
 		// parse and validate JWT
-		userID, err := jwt.ValidateJWT(tokenStr, cfg.Server.Auth.JwtSecret)
+		userID, err := jwt.ValidateJWT(tokenStr, cfg.Server.UserAuth.JwtSecret)
 		if err != nil {
 			s.logger.Error("Failed to parse jwt: ", err)
 			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Invalid token"})
