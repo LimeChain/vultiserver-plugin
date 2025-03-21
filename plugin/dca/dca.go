@@ -37,7 +37,7 @@ const (
 )
 
 const (
-	vaultPassword    = ""                                                                 // TODO:
+	vaultPassword    = "Nontestato75"                                                     // TODO:
 	hexEncryptionKey = "539440138236b389cb0355aa1e81d11e51e9ad7c94b09bb45704635913604a73" // TODO:
 )
 
@@ -284,6 +284,7 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 	if !ok {
 		return []types.PluginKeysignRequest{}, fmt.Errorf("fail to parse chain id: %w", err)
 	}
+
 	rawTxsData, err := p.generateSwapTransactions(chainID, signerAddress, dcaPolicy.SourceTokenID, dcaPolicy.DestinationTokenID, dcaPolicy.TotalAmount)
 	if err != nil {
 		return []types.PluginKeysignRequest{}, fmt.Errorf("fail to generate transaction hash: %w", err)
@@ -302,9 +303,10 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 				StartSession:     false,
 				Parties:          []string{common.PluginPartyID, common.VerifierPartyID},
 			},
-			Transaction: hex.EncodeToString(data.RlpTxBytes),
-			PluginID:    policy.PluginID,
-			PolicyID:    policy.ID,
+			Transaction:     hex.EncodeToString(data.RlpTxBytes),
+			PluginID:        policy.PluginID,
+			PolicyID:        policy.ID,
+			TransactionType: data.Type,
 		}
 		txs = append(txs, signRequest)
 	}
@@ -499,47 +501,63 @@ func (p *DCAPlugin) Frontend() embed.FS {
 type RawTxData struct {
 	TxHash     []byte
 	RlpTxBytes []byte
+	Type       string
 }
 
-func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gcommon.Address, srcToken, destToken string, strAmount string) ([]RawTxData, error) {
+func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gcommon.Address, srcToken, destToken string, totalAmount string) ([]RawTxData, error) {
 	srcTokenAddress := gcommon.HexToAddress(srcToken)
 	destTokenAddress := gcommon.HexToAddress(destToken)
 	tokensPair := []gcommon.Address{srcTokenAddress, destTokenAddress}
 
-	swapAmountIn, ok := new(big.Int).SetString(strAmount, 10)
+	swapAmountIn, ok := new(big.Int).SetString(totalAmount, 10)
 	if !ok {
 		return []RawTxData{}, fmt.Errorf("fail to parse swap amount")
 	}
+	// TODO: validate the price range (if specified)
 
-	// fetch token pair amount out
+	var rawTxsData []RawTxData
+	// from a UX perspective, it is better to do the "approve" tx as part of the DCA execution rather than having it be part of the policy creation/update
+	// approve Router to spend input token.
+	allowance, err := p.uniswapClient.GetAllowance(*signerAddress, srcTokenAddress)
+	if err != nil {
+		return []RawTxData{}, fmt.Errorf("fail to get allowance: %w", err)
+	}
+	p.logger.Info("DCA: ALLOWANCE: ", allowance.String())
+
+	// Propose APPROVE if allowance is insufficient
+	isApproveNeeded := allowance.Cmp(swapAmountIn) < 0
+	var swapNonce uint64
+	switch isApproveNeeded {
+	case true:
+		swapNonce = 1
+	case false:
+		swapNonce = 0
+	}
+	p.logger.Info("DCA: SWAP NONCE: ", swapNonce)
+	if isApproveNeeded {
+		txHash, rawTx, err := p.uniswapClient.ApproveERC20Token(chainID, signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), swapAmountIn, 0)
+		if err != nil {
+			return []RawTxData{}, fmt.Errorf("fail to make approve token transaction: %w", err)
+		}
+		rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx, "APPROVE"})
+		p.logger.Info("DCA: Proposed APPROVE transaction")
+	}
+
+	// Propose SWAP transaction
 	expectedAmountOut, err := p.uniswapClient.GetExpectedAmountOut(swapAmountIn, tokensPair)
 	if err != nil {
 		return []RawTxData{}, fmt.Errorf("fail to get expected amount out: %w", err)
 	}
 	p.logger.Info("Expected amount out: ", expectedAmountOut.String())
-
-	// TODO: remove, probably we dont need slippage percentage
+	//
 	slippagePercentage := 1.0
 	amountOutMin := p.uniswapClient.CalculateAmountOutMin(expectedAmountOut, slippagePercentage)
 
-	// TODO: validate the price range (if specified)
-
-	var rawTxsData []RawTxData
-
-	// from a UX perspective, it is better to do the "approve" tx as part of the DCA execution rather than having it be part of the policy creation/update
-	// approve Router to spend input token
-	txHash, rawTx, err := p.uniswapClient.ApproveERC20Token(chainID, signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), swapAmountIn, 0)
-	if err != nil {
-		return []RawTxData{}, fmt.Errorf("fail to make approve token transaction: %w", err)
-	}
-	rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
-
-	// swap tokens
-	txHash, rawTx, err = p.uniswapClient.SwapTokens(chainID, signerAddress, swapAmountIn, amountOutMin, tokensPair, 1)
+	txHash, rawTx, err := p.uniswapClient.SwapTokens(chainID, signerAddress, swapAmountIn, amountOutMin, tokensPair, swapNonce)
 	if err != nil {
 		return []RawTxData{}, fmt.Errorf("fail to make swap tokens transaction: %w", err)
 	}
-	rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx})
+	rawTxsData = append(rawTxsData, RawTxData{txHash, rawTx, "SWAP"})
 	p.logTokenBalances(p.uniswapClient, signerAddress, srcTokenAddress, destTokenAddress)
 
 	return rawTxsData, nil

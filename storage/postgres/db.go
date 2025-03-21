@@ -66,7 +66,12 @@ func (p *PostgresBackend) CreateTransactionHistoryTx(ctx context.Context, dbTx p
         INSERT INTO transaction_history (
             policy_id, tx_body, tx_hash, status, metadata
         ) VALUES ($1, $2, $3, $4, $5)
-				RETURNING id
+        ON CONFLICT (tx_hash) DO UPDATE SET
+            policy_id = EXCLUDED.policy_id,
+            tx_body = EXCLUDED.tx_body,
+            status = 'PENDING',
+            metadata = EXCLUDED.metadata
+		RETURNING id
     `
 	var txID uuid.UUID
 	err := dbTx.QueryRow(ctx, query,

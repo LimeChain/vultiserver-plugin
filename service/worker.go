@@ -429,9 +429,10 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 
 		// create transaction with PENDING status
 		metadata := map[string]interface{}{
-			"timestamp":  time.Now(),
-			"plugin_id":  signRequest.PluginID,
-			"public_key": signRequest.KeysignRequest.PublicKey,
+			"timestamp":        time.Now(),
+			"plugin_id":        signRequest.PluginID,
+			"public_key":       signRequest.KeysignRequest.PublicKey,
+			"transaction_type": signRequest.TransactionType,
 		}
 
 		newTx := types.TransactionHistory{
@@ -441,47 +442,15 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			Status:   types.StatusPending,
 			Metadata: metadata,
 		}
+
 		if err := s.upsertAndSyncTransaction(ctx, "create", &newTx, jwtToken); err != nil {
 			return fmt.Errorf("upsertAndSyncTransaction failed: %w", err)
 		}
 
 		// start TSS signing process
-		signBytes, err := json.Marshal(signRequest)
+		err = s.initiateTxSignWithVerifier(ctx, signRequest, metadata, newTx, jwtToken)
 		if err != nil {
-			s.logger.Errorf("Failed to marshal sign request: %v", err)
-			continue
-		}
-		// TODO: Remove hardcoded verifier port.
-		signResp, err := http.Post(
-			fmt.Sprintf("http://localhost:%d/signFromPlugin", 8080),
-			"application/json",
-			bytes.NewBuffer(signBytes),
-		)
-		if err != nil {
-			metadata["error"] = err.Error()
-			newTx.Status = types.StatusSigningFailed
-			newTx.Metadata = metadata
-			if err = s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
-				s.logger.Errorf("upsertAndSyncTransaction failed: %v", err)
-			}
 			return err
-		}
-		defer signResp.Body.Close()
-
-		respBody, err := io.ReadAll(signResp.Body)
-		if err != nil {
-			s.logger.Errorf("Failed to read response: %v", err)
-			return err
-		}
-
-		if signResp.StatusCode != http.StatusOK {
-			metadata["error"] = string(respBody)
-			newTx.Status = types.StatusSigningFailed
-			newTx.Metadata = metadata
-			if err := s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
-				s.logger.Errorf("upsertAndSyncTransaction failed: %v", err)
-			}
-			return fmt.Errorf("failed to sign transaction: %s", string(respBody))
 		}
 
 		// prepare local sign request
@@ -530,8 +499,6 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			return fmt.Errorf("upsertAndSyncTransaction failed: %v", err)
 		}
 
-		s.logger.Infof("Plugin signing test complete. Status: %d, Response: %s", signResp.StatusCode, string(respBody))
-
 		var signatures map[string]tss.KeysignResponse
 		if err := json.Unmarshal(result, &signatures); err != nil {
 			s.logger.Errorf("Failed to unmarshal signatures: %v", err)
@@ -565,7 +532,49 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 	return nil
 }
 
+func (s *WorkerService) initiateTxSignWithVerifier(ctx context.Context, signRequest types.PluginKeysignRequest, metadata map[string]interface{}, newTx types.TransactionHistory, jwtToken string) error {
+	signBytes, err := json.Marshal(signRequest)
+	if err != nil {
+		s.logger.Errorf("Failed to marshal sign request: %v", err)
+		return err
+	}
+	// TODO: Remove hardcoded verifier port.
+	signResp, err := http.Post(
+		fmt.Sprintf("http://localhost:%d/signFromPlugin", 8080),
+		"application/json",
+		bytes.NewBuffer(signBytes),
+	)
+	if err != nil {
+		metadata["error"] = err.Error()
+		newTx.Status = types.StatusSigningFailed
+		newTx.Metadata = metadata
+		if err = s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
+			s.logger.Errorf("upsertAndSyncTransaction failed: %v", err)
+		}
+		return err
+	}
+	defer signResp.Body.Close()
+
+	respBody, err := io.ReadAll(signResp.Body)
+	if err != nil {
+		s.logger.Errorf("Failed to read response: %v", err)
+		return err
+	}
+
+	if signResp.StatusCode != http.StatusOK {
+		metadata["error"] = string(respBody)
+		newTx.Status = types.StatusSigningFailed
+		newTx.Metadata = metadata
+		if err := s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
+			s.logger.Errorf("upsertAndSyncTransaction failed: %v", err)
+		}
+		return err
+	}
+	return nil
+}
+
 func (s *WorkerService) upsertAndSyncTransaction(ctx context.Context, action string, tx *types.TransactionHistory, jwtToken string) error {
+	s.logger.Info("upsertAndSyncTransaction started with action: ", action)
 	dbTx, err := s.db.Pool().Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -575,6 +584,7 @@ func (s *WorkerService) upsertAndSyncTransaction(ctx context.Context, action str
 	if action == "create" {
 		txID, err := s.db.CreateTransactionHistoryTx(ctx, dbTx, *tx)
 		if err != nil {
+			s.logger.Errorf("Failed to create (or update) transaction history tx: %v", err)
 			return fmt.Errorf("failed to create transaction history: %w", err)
 		}
 		tx.ID = txID

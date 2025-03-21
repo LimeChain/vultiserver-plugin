@@ -693,7 +693,16 @@ func (s *Server) CreateTransaction(c echo.Context) error {
 
 	existingTx, _ := s.db.GetTransactionByHash(c.Request().Context(), reqTx.TxHash)
 	if existingTx != nil {
-		return c.NoContent(http.StatusConflict)
+		if existingTx.Status != types.StatusSigningFailed &&
+			existingTx.Status != types.StatusRejected {
+			return c.NoContent(http.StatusConflict)
+		}
+
+		if err := s.db.UpdateTransactionStatus(c.Request().Context(), existingTx.ID, types.StatusPending, reqTx.Metadata); err != nil {
+			s.logger.Errorf("fail to update transaction status: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+		return c.NoContent(http.StatusOK)
 	}
 
 	if _, err := s.db.CreateTransactionHistory(c.Request().Context(), reqTx); err != nil {
