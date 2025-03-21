@@ -23,11 +23,17 @@ const (
 	initialBackoff = 100 * time.Millisecond
 )
 
+type Action int
+const (
+	CreateAction Action = iota
+	UpdateAction
+)
+
 type PolicySyncer interface {
 	CreatePolicySync(policy types.PluginPolicy) error
 	UpdatePolicySync(policy types.PluginPolicy) error
 	DeletePolicySync(policyID, signature string) error
-	SyncTransaction(action, jwtToken string, tx types.TransactionHistory) error
+	SyncTransaction(action Action, jwtToken string, tx types.TransactionHistory) error
 }
 
 type Syncer struct {
@@ -192,7 +198,7 @@ func (s *Syncer) DeletePolicySync(policyID, signature string) error {
 	})
 }
 
-func (s *Syncer) SyncTransaction(action, jwtToken string, tx types.TransactionHistory) error {
+func (s *Syncer) SyncTransaction(action Action, jwtToken string, tx types.TransactionHistory) error {
 	s.logger.WithFields(logrus.Fields{
 		"tx_id":   tx.ID,
 		"tx_hash": tx.TxHash,
@@ -206,9 +212,9 @@ func (s *Syncer) SyncTransaction(action, jwtToken string, tx types.TransactionHi
 		url := s.serverAddr + transactionEndpoint
 		var method string
 		switch action {
-		case "create":
+		case CreateAction:
 			method = http.MethodPost
-		case "update":
+		case UpdateAction:
 			method = http.MethodPut
 		}
 

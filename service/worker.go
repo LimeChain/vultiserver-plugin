@@ -37,6 +37,7 @@ import (
 
 type WorkerService struct {
 	cfg          config.Config
+	verifierPort int64
 	redis        *storage.RedisStorage
 	logger       *logrus.Logger
 	queueClient  *asynq.Client
@@ -51,7 +52,7 @@ type WorkerService struct {
 }
 
 // NewWorker creates a new worker service
-func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Client, syncer syncer.PolicySyncer, authService *AuthService, blockStorage *storage.BlockStorage, inspector *asynq.Inspector) (*WorkerService, error) {
+func NewWorker(cfg config.Config, verifierPort int64,queueClient *asynq.Client, sdClient *statsd.Client, syncer syncer.PolicySyncer, authService *AuthService, blockStorage *storage.BlockStorage, inspector *asynq.Inspector) (*WorkerService, error) {
 	logger := logrus.WithField("service", "worker").Logger
 
 	redis, err := storage.NewRedisStorage(cfg)
@@ -106,6 +107,7 @@ func NewWorker(cfg config.Config, queueClient *asynq.Client, sdClient *statsd.Cl
 		logger:       logger,
 		syncer:       syncer,
 		authService:  authService,
+		verifierPort: verifierPort,
 	}, nil
 }
 
@@ -443,7 +445,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			Metadata: metadata,
 		}
 
-		if err := s.upsertAndSyncTransaction(ctx, "create", &newTx, jwtToken); err != nil {
+		if err := s.upsertAndSyncTransaction(ctx, syncer.CreateAction, &newTx, jwtToken); err != nil {
 			return fmt.Errorf("upsertAndSyncTransaction failed: %w", err)
 		}
 
@@ -484,7 +486,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 			metadata["task_id"] = ti.ID
 			newTx.Status = types.StatusSigningFailed
 			newTx.Metadata = metadata
-			if err := s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
+			if err := s.upsertAndSyncTransaction(ctx, syncer.UpdateAction, &newTx, jwtToken); err != nil {
 				s.logger.Errorf("upsertAndSyncTransaction failed: %v", err)
 			}
 			return err
@@ -495,7 +497,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 		metadata["result"] = result
 		newTx.Status = types.StatusSigned
 		newTx.Metadata = metadata
-		if err := s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
+		if err := s.upsertAndSyncTransaction(ctx, syncer.UpdateAction, &newTx, jwtToken); err != nil {
 			return fmt.Errorf("upsertAndSyncTransaction failed: %v", err)
 		}
 
@@ -516,7 +518,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 
 			newTx.Status = types.StatusRejected
 			newTx.Metadata = metadata
-			if err := s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
+			if err := s.upsertAndSyncTransaction(ctx, syncer.UpdateAction, &newTx, jwtToken); err != nil {
 				s.logger.Errorf("upsertAndSyncTransaction failed: %v", err)
 			}
 			return fmt.Errorf("fail to complete signing: %w", err)
@@ -524,7 +526,7 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 
 		newTx.Status = types.StatusMined
 		newTx.Metadata = metadata
-		if err := s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
+		if err := s.upsertAndSyncTransaction(ctx, syncer.UpdateAction, &newTx, jwtToken); err != nil {
 			s.logger.Errorf("upsertAndSyncTransaction failed: %v", err)
 		}
 	}
@@ -538,9 +540,9 @@ func (s *WorkerService) initiateTxSignWithVerifier(ctx context.Context, signRequ
 		s.logger.Errorf("Failed to marshal sign request: %v", err)
 		return err
 	}
-	// TODO: Remove hardcoded verifier port.
+
 	signResp, err := http.Post(
-		fmt.Sprintf("http://localhost:%d/signFromPlugin", 8080),
+		fmt.Sprintf("http://localhost:%d/signFromPlugin", s.verifierPort),
 		"application/json",
 		bytes.NewBuffer(signBytes),
 	)
@@ -548,7 +550,7 @@ func (s *WorkerService) initiateTxSignWithVerifier(ctx context.Context, signRequ
 		metadata["error"] = err.Error()
 		newTx.Status = types.StatusSigningFailed
 		newTx.Metadata = metadata
-		if err = s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
+		if err = s.upsertAndSyncTransaction(ctx, syncer.UpdateAction, &newTx, jwtToken); err != nil {
 			s.logger.Errorf("upsertAndSyncTransaction failed: %v", err)
 		}
 		return err
@@ -565,7 +567,7 @@ func (s *WorkerService) initiateTxSignWithVerifier(ctx context.Context, signRequ
 		metadata["error"] = string(respBody)
 		newTx.Status = types.StatusSigningFailed
 		newTx.Metadata = metadata
-		if err := s.upsertAndSyncTransaction(ctx, "update", &newTx, jwtToken); err != nil {
+		if err := s.upsertAndSyncTransaction(ctx, syncer.UpdateAction, &newTx, jwtToken); err != nil {
 			s.logger.Errorf("upsertAndSyncTransaction failed: %v", err)
 		}
 		return err
@@ -573,7 +575,7 @@ func (s *WorkerService) initiateTxSignWithVerifier(ctx context.Context, signRequ
 	return nil
 }
 
-func (s *WorkerService) upsertAndSyncTransaction(ctx context.Context, action string, tx *types.TransactionHistory, jwtToken string) error {
+func (s *WorkerService) upsertAndSyncTransaction(ctx context.Context, action syncer.Action, tx *types.TransactionHistory, jwtToken string) error {
 	s.logger.Info("upsertAndSyncTransaction started with action: ", action)
 	dbTx, err := s.db.Pool().Begin(ctx)
 	if err != nil {
@@ -581,7 +583,7 @@ func (s *WorkerService) upsertAndSyncTransaction(ctx context.Context, action str
 	}
 	defer dbTx.Rollback(ctx)
 
-	if action == "create" {
+	if action == syncer.CreateAction {
 		txID, err := s.db.CreateTransactionHistoryTx(ctx, dbTx, *tx)
 		if err != nil {
 			s.logger.Errorf("Failed to create (or update) transaction history tx: %v", err)
