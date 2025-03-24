@@ -2,6 +2,7 @@ import Button from "@/modules/core/components/ui/button/Button";
 import PluginCard from "@/modules/plugin/components/plugin-card/PluginCard";
 import { isSupportedChainType } from "@/modules/shared/wallet/wallet.utils";
 import VulticonnectWalletService from "@/modules/shared/wallet/vulticonnectWalletService";
+import PricingService from '@/modules/policy/services/pricingService';
 import { useNavigate } from "react-router-dom";
 import "./Marketplace.css";
 import MarketplaceFilters from "../marketplace-filters/MarketplaceFilters";
@@ -21,12 +22,12 @@ const toHex = (str: string): string => {
   );
 };
 
-const sign = async (content: unknown): Promise<string> => {
+const getAccountVault = async (): Promise<[string, { publicKeyEcdsa: string }]> => {
   const chain = localStorage.getItem("chain") as string;
 
   let accounts = [];
   if (!isSupportedChainType(chain)) {
-    return "";
+    throw new Error('Chain not supported');
   }
 
   if (chain === "ethereum") {
@@ -43,8 +44,13 @@ const sign = async (content: unknown): Promise<string> => {
   }
 
   const [account] = accounts;
+  const [vault] = vaults;
 
-  const hexMessage = toHex(JSON.stringify(content));
+  return [account, vault];
+}
+
+const sign = async (account: string, content: string): Promise<string> => {
+  const hexMessage = toHex(content);
 
   const signature = await VulticonnectWalletService.signCustomMessage(
     hexMessage,
@@ -65,14 +71,23 @@ const Marketplace = () => {
 
   const approveDcaPricingTerms = async () => {
     // dca pricing
-    const signature = await sign({
+    const pricingPolicy = JSON.stringify({
       type: 'PER_TX',
       amount: 0.1,
       metric: 'PERCENTAGE'
     })
 
-    // TODO:
-    console.log('signature', signature)
+    const [account, vault] = await getAccountVault();
+    const signature = await sign(account, pricingPolicy)
+
+    const pricing = await PricingService.createPricing({
+      public_key: vault.publicKeyEcdsa, // TODO: what if not ecdsa?
+      plugin_type: 'dca',
+      signature,
+      pricing: pricingPolicy
+    })
+
+    console.log('pricing', pricing)
   }
 
   return (

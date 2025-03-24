@@ -47,5 +47,7 @@ type DatabaseStorage interface {
 	UpdatePlugin(ctx context.Context, id string, updates types.PluginUpdateDto) (*types.Plugin, error)
 	DeletePluginById(ctx context.Context, id string) error
 
+	CreatePluginPricing(ctx context.Context, pluginPricingDto types.PluginPricingCreateDto) (*types.PluginPricing, error)
+
 	Pool() *pgxpool.Pool
 }

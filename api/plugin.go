@@ -690,14 +690,32 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, message)
 	}
 
-	s.logger.Println("pluginType")
-	s.logger.Println(pluginType)
-	// TODO: validate plugin exists
+	// TODO: validate signature
+	// TODO: validate plugin of that type exists
+
+	var pluginPricing types.PluginPricingCreateDto
+	if err := c.Bind(&pluginPricing); err != nil {
+		return fmt.Errorf("fail to parse request, err: %w", err)
+	}
+
+	if err := c.Validate(&pluginPricing); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": err.Error(),
+		})
+	}
+
 	// TODO: validate pricing policy matches the one of plugin?
 
-	// TODO: validate signature
+	created, err := s.db.CreatePluginPricing(c.Request().Context(), pluginPricing)
+	if err != nil {
+		message := echo.Map{
+			"message": "failed to create plugin pricing",
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
+	}
 
-	return c.NoContent(http.StatusNoContent)
+	return c.JSON(http.StatusOK, created)
 }
 
 func (s *Server) verifyPolicySignature(policy types.PluginPolicy, update bool) bool {

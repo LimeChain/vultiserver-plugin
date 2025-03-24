@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE plugin_pricings (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     public_key TEXT NOT NULL,
     plugin_type plugin_type NOT NULL,
     signature TEXT NOT NULL,
