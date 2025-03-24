@@ -680,6 +680,26 @@ func (s *Server) DeletePlugin(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
+	pluginType := c.Param("pluginType")
+	if pluginType == "" {
+		message := echo.Map{
+			"message": "failed to create plugin pricing policy",
+			"error":   "plugin id is required",
+		}
+		return c.JSON(http.StatusBadRequest, message)
+	}
+
+	s.logger.Println("pluginType")
+	s.logger.Println(pluginType)
+	// TODO: validate plugin exists
+	// TODO: validate pricing policy matches the one of plugin?
+
+	// TODO: validate signature
+
+	return c.NoContent(http.StatusNoContent)
+}
+
 func (s *Server) verifyPolicySignature(policy types.PluginPolicy, update bool) bool {
 	msgHex, err := policyToMessageHex(policy, update)
 	if err != nil {

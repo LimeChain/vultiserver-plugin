@@ -204,6 +204,9 @@ func (s *Server) StartServer() error {
 			HTML5:      true,
 			Filesystem: http.FS(s.plugin.Frontend()),
 		}))
+
+		// TODO: use AuthMiddleware
+		pluginGroup.POST("/:pluginType/pricings", s.CreatePluginPricingPolicy)
 	}
 
 	// policy mode is always available since it is used by both verifier server and plugin server

@@ -1,5 +1,7 @@
 import Button from "@/modules/core/components/ui/button/Button";
 import PluginCard from "@/modules/plugin/components/plugin-card/PluginCard";
+import { isSupportedChainType } from "@/modules/shared/wallet/wallet.utils";
+import VulticonnectWalletService from "@/modules/shared/wallet/vulticonnectWalletService";
 import { useNavigate } from "react-router-dom";
 import "./Marketplace.css";
 import MarketplaceFilters from "../marketplace-filters/MarketplaceFilters";
@@ -10,6 +12,48 @@ const getSavedView = (): string => {
   return localStorage.getItem("view") || "grid";
 };
 
+const toHex = (str: string): string => {
+  return (
+    "0x" +
+    Array.from(str)
+      .map((char) => char.charCodeAt(0).toString(16).padStart(2, "0"))
+      .join("")
+  );
+};
+
+const sign = async (content: unknown): Promise<string> => {
+  const chain = localStorage.getItem("chain") as string;
+
+  let accounts = [];
+  if (!isSupportedChainType(chain)) {
+    return "";
+  }
+
+  if (chain === "ethereum") {
+    accounts = await VulticonnectWalletService.getConnectedEthAccounts();
+  }
+
+  if (!accounts || accounts.length === 0) {
+    throw new Error("Need to connect to wallet");
+  }
+
+  const vaults = await window.vultisig?.getVaults();
+  if (!vaults || vaults.length === 0) {
+    throw new Error("No vaults found");
+  }
+
+  const [account] = accounts;
+
+  const hexMessage = toHex(JSON.stringify(content));
+
+  const signature = await VulticonnectWalletService.signCustomMessage(
+    hexMessage,
+    account
+  );
+
+  return signature;
+}
+
 const Marketplace = () => {
   const navigate = useNavigate();
   const [view, setView] = useState<string>(getSavedView());
@@ -18,6 +62,18 @@ const Marketplace = () => {
     localStorage.setItem("view", view);
     setView(view);
   };
+
+  const approveDcaPricingTerms = async () => {
+    // dca pricing
+    const signature = await sign({
+      type: 'PER_TX',
+      amount: 0.1,
+      metric: 'PERCENTAGE'
+    })
+
+    // TODO:
+    console.log('signature', signature)
+  }
 
   return (
     <>
@@ -47,6 +103,15 @@ const Marketplace = () => {
           onClick={() => navigate(`/plugin-detail/1`)}
         >
           Open Detail view
+        </Button>
+
+        <Button
+          size="small"
+          type="button"
+          styleType="primary"
+          onClick={approveDcaPricingTerms}
+        >
+          Approve DCA pricing terms
         </Button>
       </div>
     </>
