@@ -233,7 +233,7 @@ func (s *Syncer) SyncTransaction(action, jwtToken string, tx types.TransactionHi
 				"status_code": resp.StatusCode,
 				"body":        string(body),
 				"tx_id":       tx.ID,
-			}).Error("Failed to sync update policy")
+			}).Error("Failed to sync transaction")
 			return fmt.Errorf("fail to sync transaction with verifier server, status: %d", resp.StatusCode)
 		}
 
