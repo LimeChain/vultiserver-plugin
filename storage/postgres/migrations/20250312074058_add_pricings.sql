@@ -16,7 +16,7 @@ BEGIN
 END $$;
 
 CREATE TABLE IF NOT EXISTS pricings (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type pricing_type NOT NULL,
     frequency pricing_frequency DEFAULT NULL,
     amount DOUBLE PRECISION NOT NULL,
