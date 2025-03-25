@@ -1,12 +1,21 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { PluginPolicy, PolicyTransactionHistory } from "../models/policy";
+import {
+  PluginPolicy,
+  PolicySchema,
+  PolicyTransactionHistory,
+} from "../models/policy";
 import PolicyService from "../services/policyService";
-import { isSupportedChainType } from "@/modules/shared/wallet/wallet.utils";
+import {
+  derivePathMap,
+  isSupportedChainType,
+  toHex,
+} from "@/modules/shared/wallet/wallet.utils";
 import Toast from "@/modules/core/components/ui/toast/Toast";
 import VulticonnectWalletService from "@/modules/shared/wallet/vulticonnectWalletService";
 
 export interface PolicyContextType {
   policyMap: Map<string, PluginPolicy>;
+  policySchemaMap: Map<string, PolicySchema>;
   addPolicy: (policy: PluginPolicy) => Promise<boolean>;
   updatePolicy: (policy: PluginPolicy) => Promise<boolean>;
   removePolicy: (policyId: string) => Promise<void>;
@@ -21,6 +30,9 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [policyMap, setPolicyMap] = useState(new Map<string, PluginPolicy>());
+  const [policySchemaMap, setPolicySchemaMap] = useState(
+    new Map<string, any>()
+  );
   const [toast, setToast] = useState<{
     message: string;
     error?: string;
@@ -30,7 +42,7 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const fetchPolicies = async (): Promise<void> => {
       try {
-        const fetchedPolicies = await PolicyService.getPolicies();
+        const fetchedPolicies = await PolicyService.getPolicies("dca"); // todo remove hardcoding once we have the marketplace
 
         const constructPolicyMap: Map<string, PluginPolicy> = new Map(
           fetchedPolicies?.map((p: PluginPolicy) => [p.id, p]) // Convert the array into [key, value] pairs
@@ -48,6 +60,33 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     fetchPolicies();
+
+    const fetchPolicySchema = async (pluginType: string): Promise<any> => {
+      if (policySchemaMap.has(pluginType)) {
+        return Promise.resolve(policySchemaMap.get(pluginType));
+      }
+
+      try {
+        const fetchedSchemas = await PolicyService.getPolicySchema(pluginType);
+
+        setPolicySchemaMap((prev) =>
+          new Map(prev).set(pluginType, fetchedSchemas)
+        );
+
+        return Promise.resolve(fetchedSchemas);
+      } catch (error: any) {
+        console.error("Failed to fetch policy schema:", error.message);
+        setToast({
+          message: error.message || "Failed to fetch policy schema",
+          error: error.error,
+          type: "error",
+        });
+
+        return Promise.resolve(null);
+      }
+    };
+
+    fetchPolicySchema("dca"); // todo remove hardcoding once we have the marketplace
   }, []);
 
   const addPolicy = async (policy: PluginPolicy): Promise<boolean> => {
@@ -148,16 +187,13 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Need to connect to wallet");
       }
 
-      const vaults = await window.vultisig?.getVaults();
-      if (!vaults || vaults.length === 0) {
-        throw new Error("No vaults found");
-      }
+      const vaults = await VulticonnectWalletService.getVaults();
 
-      policy.public_key = "";
+      policy.public_key = vaults[0].publicKeyEcdsa;
       policy.signature = "";
       policy.is_ecdsa = true;
       policy.chain_code_hex = vaults[0].hexChainCode;
-      policy.derive_path = "m/44'/60'/0'/0/0"; // TODO: add mapping { ethereum => "m/44'/60'/0'/0/0", thor => ... })
+      policy.derive_path = derivePathMap[chain];
       const serializedPolicy = JSON.stringify(policy);
       const hexMessage = toHex(serializedPolicy);
 
@@ -166,8 +202,6 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
         accounts[0]
       );
 
-      policy.public_key = vaults[0].publicKeyEcdsa
-
       console.log("Public key ecdsa: ", policy.public_key);
       console.log("Chain code hex: ", policy.chain_code_hex);
       console.log("Derive path: ", policy.derive_path);
@@ -175,7 +209,7 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("Account[0]: ", accounts[0]);
       console.log("Signature: ", signature);
 
-      return signature
+      return signature;
     }
     return "";
   };
@@ -202,6 +236,7 @@ export const PolicyProvider: React.FC<{ children: React.ReactNode }> = ({
     <PolicyContext.Provider
       value={{
         policyMap,
+        policySchemaMap,
         addPolicy,
         updatePolicy,
         removePolicy,
@@ -226,13 +261,4 @@ export const usePolicies = (): PolicyContextType => {
     throw new Error("usePolicies must be used within a PolicyProvider");
   }
   return context;
-};
-
-const toHex = (str: string): string => {
-  return (
-    "0x" +
-    Array.from(str)
-      .map((char) => char.charCodeAt(0).toString(16).padStart(2, "0"))
-      .join("")
-  );
 };
