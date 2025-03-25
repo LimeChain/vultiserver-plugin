@@ -102,7 +102,7 @@ func NewServer(
 				50000,   // TODO: config
 				time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
 			)
-			plugin, err = dca.NewDCAPlugin(uniswapCfg, db, logger)
+			plugin, err = dca.NewDCAPlugin(uniswapCfg, db,logger)
 			if err != nil {
 				logger.Fatal("fail to initialize DCA plugin: ", err)
 			}
@@ -124,7 +124,7 @@ func NewServer(
 			logger.Fatal("Failed to initialize DCA plugin: ", err)
 		}
 
-		syncerService = syncer.NewPolicySyncer(logger.WithField("service", "syncer").Logger, cfg)
+		syncerService = syncer.NewPolicySyncer(logger.WithField("service", "syncer").Logger, cfg.Server.Host, cfg.Server.Port)
 	}
 
 	policyService, err := service.NewPolicyService(db, syncerService, schedulerService, logger.WithField("service", "policy").Logger)

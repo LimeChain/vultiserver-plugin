@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/internal/types"
 )
 
@@ -39,18 +38,16 @@ type PolicySyncer interface {
 type Syncer struct {
 	logger     *logrus.Logger
 	client     *http.Client
-	config     *config.Config
 	serverAddr string
 }
 
-func NewPolicySyncer(logger *logrus.Logger, cfg *config.Config) PolicySyncer {
+func NewPolicySyncer(logger *logrus.Logger, serverHost string, serverPort int64) PolicySyncer {
 	return &Syncer{
 		logger: logger,
-		config: cfg,
 		client: &http.Client{
 			Timeout: defaultTimeout,
 		},
-		serverAddr: fmt.Sprintf("http://%s:%d", cfg.Server.Host, cfg.Server.Port),
+		serverAddr: fmt.Sprintf("http://%s:%d", serverHost, serverPort),
 	}
 }
 

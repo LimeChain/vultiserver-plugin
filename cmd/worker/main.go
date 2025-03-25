@@ -19,7 +19,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	sdClient, err := statsd.New(cfg.Datadog.Host + ":" + cfg.Datadog.Port)
 	if err != nil {
 		panic(err)
@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	syncerService := syncer.NewPolicySyncer(logger, verifierConfig)
+	syncerService := syncer.NewPolicySyncer(logger.WithField("service", "syncer").Logger, verifierConfig.Server.Host, verifierConfig.Server.Port)
 	authService := service.NewAuthService(cfg.Server.JWTSecret)
 
 	client := asynq.NewClient(redisOptions)

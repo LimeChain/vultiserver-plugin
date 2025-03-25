@@ -180,7 +180,7 @@ if server return http status code 200, it means the code is valid , other status
 ```sh
 export RPC_URL=http://127.0.0.1:8545
 export PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 
-export VAULT_ADDRESS=0x5582df2D22194AF8201997D750e80fd8140387c2
+export VAULT_ADDRESS=0x7238f7c96DB71bf2bEda4909f023DAE40DEf3248
 export TOKEN_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 ```
 

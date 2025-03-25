@@ -212,6 +212,22 @@ func (p *PostgresBackend) GetTransactionByHash(ctx context.Context, txHash strin
 	return &tx, nil
 }
 
+func (p *PostgresBackend) CountTransactions(ctx context.Context, policyID uuid.UUID, status types.TransactionStatus, txType string) (int64, error) {
+	var count int64
+	query := `
+		SELECT COUNT(*)
+		FROM transaction_history
+		WHERE policy_id = $1
+		AND status = $2
+		AND metadata->>'transaction_type' = $3
+	`
+	err := p.pool.QueryRow(ctx, query, policyID, status, txType).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count transactions: %w", err)
+	}
+	return count, nil
+}
+
 func (p *PostgresBackend) Pool() *pgxpool.Pool {
 	return p.pool
 }
