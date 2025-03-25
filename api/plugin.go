@@ -841,12 +841,15 @@ func policyToMessageHex(policy types.PluginPolicy, isUpdate bool) (string, error
 	return hex.EncodeToString(serializedPolicy), nil
 }
 
-func pluginPricingToMessageHex(pricing types.PluginPricingCreateDto) (string, error) {
-	serializedPolicy, err := json.Marshal(pricing)
+func pluginPricingToMessageHex(pluginPricing types.PluginPricingCreateDto) (string, error) {
+	// parse raw json and serialize back into string to remove escape characters
+	var serializedPricingPolicy string
+	err := json.Unmarshal(pluginPricing.Pricing, &serializedPricingPolicy)
 	if err != nil {
-		return "", fmt.Errorf("failed to serialize policy")
+		return "", fmt.Errorf("failed to parse pricing policy")
 	}
-	return hex.EncodeToString(serializedPolicy), nil
+
+	return hex.EncodeToString([]byte(serializedPricingPolicy)), nil
 }
 
 func calculateTransactionHash(txData string) (string, error) {
