@@ -723,27 +723,46 @@ func (s *Server) DeletePlugin(c echo.Context) error {
 func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 	pluginType := c.Param("pluginType")
 	if pluginType == "" {
-		message := echo.Map{
+		return c.JSON(http.StatusBadRequest, echo.Map{
 			"message": "failed to create plugin pricing policy",
 			"error":   "plugin id is required",
-		}
-		return c.JSON(http.StatusBadRequest, message)
+		})
 	}
-
-	// TODO: validate plugin of that type exists
 
 	var pluginPricing types.PluginPricingCreateDto
 	if err := c.Bind(&pluginPricing); err != nil {
-		return fmt.Errorf("fail to parse request, err: %w", err)
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "failed to parse request body",
+		})
 	}
-
 	if err := c.Validate(&pluginPricing); err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{
 			"message": err.Error(),
 		})
 	}
 
-	// TODO: validate signature
+	// TODO: this goes into verifier only
+	// validate plugin type with pricing exists
+	// if pluginType != pluginPricing.PluginType {
+	// 	return c.JSON(http.StatusBadRequest, echo.Map{
+	// 		"message": "plugin type does not match payload",
+	// 	})
+	// }
+	// plugin, err := s.db.FindPluginByType(c.Request().Context(), pluginType)
+	// if err != nil {
+	// 	return c.JSON(http.StatusBadRequest, echo.Map{
+	// 		"message": "plugin not found",
+	// 	})
+	// }
+	// pricing, err := s.db.FindPricingById(c.Request().Context(), plugin.ID)
+	// if err != nil {
+	// 	return c.JSON(http.StatusBadRequest, echo.Map{
+	// 		"message": "plugin pricing not found",
+	// 	})
+	// }
+	// TODO: validate signed policy matches the one of plugin
+
+	// validate signature
 	if !s.verifyPluginPricingSignature(pluginPricing) {
 		s.logger.Error("invalid plugin pricing signature")
 		message := echo.Map{
@@ -752,8 +771,6 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 		}
 		return c.JSON(http.StatusForbidden, message)
 	}
-
-	// TODO: validate pricing policy matches the one of plugin?
 
 	created, err := s.db.CreatePluginPricing(c.Request().Context(), pluginPricing)
 	if err != nil {

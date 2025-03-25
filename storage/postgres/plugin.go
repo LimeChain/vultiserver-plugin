@@ -14,22 +14,6 @@ import (
 
 const PLUGINS_TABLE = "plugins"
 
-func (p *PostgresBackend) FindPluginById(ctx context.Context, id string) (*types.Plugin, error) {
-	query := fmt.Sprintf(`SELECT * FROM %s WHERE id = $1 LIMIT 1;`, PLUGINS_TABLE)
-
-	rows, err := p.pool.Query(ctx, query, id)
-	if err != nil {
-		return nil, err
-	}
-
-	plugin, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Plugin])
-	if err != nil {
-		return nil, err
-	}
-
-	return &plugin, nil
-}
-
 func (p *PostgresBackend) FindPlugins(ctx context.Context) ([]types.Plugin, error) {
 	if p.pool == nil {
 		return []types.Plugin{}, fmt.Errorf("database pool is nil")
@@ -48,6 +32,38 @@ func (p *PostgresBackend) FindPlugins(ctx context.Context) ([]types.Plugin, erro
 	}
 
 	return plugins, nil
+}
+
+func (p *PostgresBackend) FindPluginById(ctx context.Context, id string) (*types.Plugin, error) {
+	query := fmt.Sprintf(`SELECT * FROM %s WHERE id = $1 LIMIT 1;`, PLUGINS_TABLE)
+
+	rows, err := p.pool.Query(ctx, query, id)
+	if err != nil {
+		return nil, err
+	}
+
+	plugin, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Plugin])
+	if err != nil {
+		return nil, err
+	}
+
+	return &plugin, nil
+}
+
+func (p *PostgresBackend) FindPluginByType(ctx context.Context, pluginType string) (*types.Plugin, error) {
+	query := fmt.Sprintf(`SELECT * FROM %s WHERE type = $1 LIMIT 1;`, PLUGINS_TABLE)
+
+	rows, err := p.pool.Query(ctx, query, pluginType)
+	if err != nil {
+		return nil, err
+	}
+
+	plugin, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Plugin])
+	if err != nil {
+		return nil, err
+	}
+
+	return &plugin, nil
 }
 
 func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (*types.Plugin, error) {
