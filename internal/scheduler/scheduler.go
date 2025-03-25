@@ -127,6 +127,11 @@ func (s *SchedulerService) checkAndEnqueueTasks() error {
 		}
 
 		if time.Now().UTC().Before(nextTime) || triggerStatus == types.StatusTimeTriggerRunning {
+			s.logger.WithFields(logrus.Fields{
+				"policy_id": trigger.PolicyID,
+				"next_time": nextTime,
+				"state":     triggerStatus,
+			}).Info("Trigger have not reached next time or it's in running status")
 			continue
 		}
 
@@ -198,7 +203,7 @@ func (s *SchedulerService) GetTriggerFromPolicy(policy types.PluginPolicy) (*typ
 	trigger := types.TimeTrigger{
 		PolicyID:       policy.ID,
 		CronExpression: cronExpr,
-		StartTime:      policySchedule.Schedule.StartTime,
+		StartTime:      time.Now().UTC(),
 		EndTime:        policySchedule.Schedule.EndTime,
 		Frequency:      policySchedule.Schedule.Frequency,
 		Interval:       interval,
