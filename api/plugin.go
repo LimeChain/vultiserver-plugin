@@ -730,7 +730,6 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, message)
 	}
 
-	// TODO: validate signature
 	// TODO: validate plugin of that type exists
 
 	var pluginPricing types.PluginPricingCreateDto
@@ -742,6 +741,16 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{
 			"message": err.Error(),
 		})
+	}
+
+	// TODO: validate signature
+	if !s.verifyPluginPricingSignature(pluginPricing) {
+		s.logger.Error("invalid plugin pricing signature")
+		message := echo.Map{
+			"message": "Authorization failed",
+			"error":   "Invalid plugin pricing signature",
+		}
+		return c.JSON(http.StatusForbidden, message)
 	}
 
 	// TODO: validate pricing policy matches the one of plugin?
@@ -758,6 +767,23 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 	return c.JSON(http.StatusOK, created)
 }
 
+// TODO: refactor into helper/validator fn
+func (s *Server) verifyPluginPricingSignature(pricing types.PluginPricingCreateDto) bool {
+	msgHex, err := pluginPricingToMessageHex(pricing)
+	if err != nil {
+		s.logger.Error(fmt.Errorf("failed to convert plugin pricing to message hex: %w", err))
+		return false
+	}
+
+	return s.verifySignature(
+		pricing.PublicKey,
+		pricing.ChainCodeHex,
+		pricing.DerivePath,
+		pricing.Signature,
+		msgHex,
+	)
+}
+
 func (s *Server) verifyPolicySignature(policy types.PluginPolicy, update bool) bool {
 	msgHex, err := policyToMessageHex(policy, update)
 	if err != nil {
@@ -765,19 +791,35 @@ func (s *Server) verifyPolicySignature(policy types.PluginPolicy, update bool) b
 		return false
 	}
 
+	return s.verifySignature(
+		policy.PublicKey,
+		policy.ChainCodeHex,
+		policy.DerivePath,
+		policy.Signature,
+		msgHex,
+	)
+}
+
+func (s *Server) verifySignature(
+	publicKey string,
+	chainCodeHex string,
+	derivePath string,
+	signature string,
+	msgHex string,
+) bool {
 	msgBytes, err := hex.DecodeString(strings.TrimPrefix(msgHex, "0x"))
 	if err != nil {
 		s.logger.Error(fmt.Errorf("failed to decode message bytes: %w", err))
 		return false
 	}
 
-	signatureBytes, err := hex.DecodeString(strings.TrimPrefix(policy.Signature, "0x"))
+	signatureBytes, err := hex.DecodeString(strings.TrimPrefix(signature, "0x"))
 	if err != nil {
 		s.logger.Error(fmt.Errorf("failed to decode signature bytes: %w", err))
 		return false
 	}
 
-	isVerified, err := sigutil.VerifySignature(policy.PublicKey, policy.ChainCodeHex, policy.DerivePath, msgBytes, signatureBytes)
+	isVerified, err := sigutil.VerifySignature(publicKey, chainCodeHex, derivePath, msgBytes, signatureBytes)
 	if err != nil {
 		s.logger.Error(fmt.Errorf("failed to verify signature: %w", err))
 		return false
@@ -793,6 +835,14 @@ func policyToMessageHex(policy types.PluginPolicy, isUpdate bool) (string, error
 	policy.Signature = ""
 
 	serializedPolicy, err := json.Marshal(policy)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize policy")
+	}
+	return hex.EncodeToString(serializedPolicy), nil
+}
+
+func pluginPricingToMessageHex(pricing types.PluginPricingCreateDto) (string, error) {
+	serializedPolicy, err := json.Marshal(pricing)
 	if err != nil {
 		return "", fmt.Errorf("failed to serialize policy")
 	}

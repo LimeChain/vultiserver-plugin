@@ -1,7 +1,7 @@
 import Button from "@/modules/core/components/ui/button/Button";
 import PluginCard from "@/modules/plugin/components/plugin-card/PluginCard";
 import { isSupportedChainType } from "@/modules/shared/wallet/wallet.utils";
-import VulticonnectWalletService from "@/modules/shared/wallet/vulticonnectWalletService";
+import VulticonnectWalletService, { IVulticonnectVault }  from "@/modules/shared/wallet/vulticonnectWalletService";
 import PricingService from '@/modules/policy/services/pricingService';
 import { useNavigate } from "react-router-dom";
 import "./Marketplace.css";
@@ -22,7 +22,7 @@ const toHex = (str: string): string => {
   );
 };
 
-const getAccountVault = async (): Promise<[string, { publicKeyEcdsa: string }]> => {
+const getAccountVault = async (): Promise<[string, IVulticonnectVault]> => {
   const chain = localStorage.getItem("chain") as string;
 
   let accounts = [];
@@ -78,11 +78,16 @@ const Marketplace = () => {
     })
 
     const [account, vault] = await getAccountVault();
-    const signature = await sign(account, pricingPolicy)
+    const signature = await sign(account, pricingPolicy);
+
+    console.log(vault, signature)
 
     const pricing = await PricingService.createPricing({
-      public_key: vault.publicKeyEcdsa, // TODO: what if not ecdsa?
+      public_key: vault.publicKeyEcdsa,
       plugin_type: 'dca',
+      is_ecdsa: true,
+      chain_code_hex: vault.hexChainCode,
+      derive_path: "m/44'/60'/0'/0/0", // TODO: should be per chain
       signature,
       pricing: pricingPolicy
     })

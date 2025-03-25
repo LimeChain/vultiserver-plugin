@@ -33,19 +33,28 @@ func (p *PostgresBackend) CreatePluginPricing(
 	query := fmt.Sprintf(`INSERT INTO %s (
 		public_key,
 		plugin_type,
+		is_ecdsa,
+		chain_code_hex,
+		derive_path,
 		signature,
 		pricing
 	) VALUES (
 		@PublicKey,
 		@PluginType,
+		@IsEcdsa,
+		@ChainCodeHex,
+		@DerivePath,
 		@Signature,
 		@Pricing
 	) RETURNING id;`, PLUGIN_PRICINGS_TABLE)
 	args := pgx.NamedArgs{
-		"PublicKey":  pluginPricingDto.PublicKey,
-		"PluginType": pluginPricingDto.PluginType,
-		"Signature":  pluginPricingDto.Signature,
-		"Pricing":    pluginPricingDto.Pricing,
+		"PublicKey":    pluginPricingDto.PublicKey,
+		"PluginType":   pluginPricingDto.PluginType,
+		"IsEcdsa":      pluginPricingDto.IsEcdsa,
+		"ChainCodeHex": pluginPricingDto.ChainCodeHex,
+		"DerivePath":   pluginPricingDto.DerivePath,
+		"Signature":    pluginPricingDto.Signature,
+		"Pricing":      pluginPricingDto.Pricing,
 	}
 
 	var createdId string
