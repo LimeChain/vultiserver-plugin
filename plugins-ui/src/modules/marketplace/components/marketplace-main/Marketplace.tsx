@@ -3,8 +3,10 @@ import PluginCard from "@/modules/plugin/components/plugin-card/PluginCard";
 import { useNavigate } from "react-router-dom";
 import "./Marketplace.css";
 import MarketplaceFilters from "../marketplace-filters/MarketplaceFilters";
-import { useState } from "react";
-import { ViewFilter } from "../../models/marketplace";
+import { useEffect, useState } from "react";
+import { PluginType, ViewFilter } from "../../models/marketplace";
+import MarketplaceService from "../../services/marketplaceService";
+import Toast from "@/modules/core/components/ui/toast/Toast";
 
 const getSavedView = (): string => {
   return localStorage.getItem("view") || "grid";
@@ -19,37 +21,77 @@ const Marketplace = () => {
     setView(view);
   };
 
+  const [toast, setToast] = useState<{
+    message: string;
+    error?: string;
+    type: "success" | "error";
+  } | null>(null);
+
+  const [plugins, setPlugins] = useState<PluginType[] | null>(null);
+
+  useEffect(() => {
+    const fetchPlugins = async (): Promise<void> => {
+      try {
+        const fetchedPlugins = await MarketplaceService.getPlugins();
+        console.log("fetchedPlugins", fetchedPlugins);
+        setPlugins(fetchedPlugins);
+      } catch (error: any) {
+        console.error("Failed to get plugins:", error.message);
+        setToast({
+          message: "Failed to get plugins",
+          error: error.error,
+          type: "error",
+        });
+      }
+    };
+
+    fetchPlugins();
+  }, []);
+
   return (
     <>
-      <div className="only-section">
-        <h2>Plugins Marketplace</h2>
-        <MarketplaceFilters
-          viewFilter={view as ViewFilter}
-          onChange={changeView}
-        />
-        <section className="cards">
-          {[1, 2, 3, 4, 5].map((_, index) => (
-            <div className={view === "list" ? "list-card" : ""} key={index}>
-              <PluginCard
-                pluginType="dca" // todo remove hardcoding once we have the marketplace
-                uiStyle={view as ViewFilter}
-                id={index.toString()}
-                title="DCA Plugin"
-                description="The DCA Plugin allows you to dollar cost average into any supported token like Bitcoin. "
-              />
-            </div>
-          ))}
-        </section>
+      {plugins && (
+        <div className="only-section">
+          <h2>Plugins Marketplace</h2>
+          <MarketplaceFilters
+            viewFilter={view as ViewFilter}
+            onChange={changeView}
+          />
+          <section className="cards">
+            {plugins.map((plugin) => (
+              <div
+                className={view === "list" ? "list-card" : ""}
+                key={plugin.id}
+              >
+                <PluginCard
+                  pluginType={plugin.type}
+                  uiStyle={view as ViewFilter}
+                  id={plugin.id}
+                  title={plugin.title}
+                  description={plugin.description}
+                />
+              </div>
+            ))}
+          </section>
 
-        <Button
-          size="small"
-          type="button"
-          styleType="primary"
-          onClick={() => navigate(`/plugin-detail/1`)}
-        >
-          Open Detail view
-        </Button>
-      </div>
+          <Button
+            size="small"
+            type="button"
+            styleType="primary"
+            onClick={() => navigate(`/plugin-detail/1`)}
+          >
+            Open Detail view
+          </Button>
+        </div>
+      )}
+
+      {toast && (
+        <Toast
+          title={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </>
   );
 };
