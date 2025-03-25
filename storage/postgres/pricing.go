@@ -57,3 +57,14 @@ func (p *PostgresBackend) CreatePricing(ctx context.Context, pricingDto types.Pr
 
 	return p.FindPricingById(ctx, createdId)
 }
+
+func (p *PostgresBackend) DeletePricingById(ctx context.Context, id string) error {
+	query := fmt.Sprintf(`DELETE FROM %s WHERE id = $1;`, PRICINGS_TABLE)
+
+	_, err := p.pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

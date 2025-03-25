@@ -216,15 +216,19 @@ func (s *Server) StartServer() error {
 
 	if s.mode == "verifier" {
 		e.POST("/login", s.UserLogin)
+		e.GET("/users/me", s.GetLoggedUser, s.userAuthMiddleware)
 
 		pluginsGroup := e.Group("/plugins")
 		pluginsGroup.GET("", s.GetPlugins)
 		pluginsGroup.GET("/:pluginId", s.GetPlugin)
 		pluginsGroup.POST("", s.CreatePlugin, s.userAuthMiddleware)
+		pluginsGroup.PATCH("/:pluginId", s.UpdatePlugin, s.userAuthMiddleware)
+		pluginsGroup.DELETE("/:pluginId", s.DeletePlugin, s.userAuthMiddleware)
 
 		pricingsGroup := e.Group("/pricings")
 		pricingsGroup.GET("/:pricingId", s.GetPricing)
 		pricingsGroup.POST("", s.CreatePricing, s.userAuthMiddleware)
+		pricingsGroup.DELETE("/:pricingId", s.DeletePricing, s.userAuthMiddleware)
 	}
 
 	syncGroup := e.Group("/sync")
