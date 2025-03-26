@@ -22,3 +22,9 @@ type PluginPricing struct {
 	Signature    string          `json:"signature" validate:"required"`
 	Pricing      json.RawMessage `json:"pricing" validate:"required"`
 }
+
+type PricingPolicy struct {
+	Type   string  `json:"type"`
+	Amount float64 `json:"amount"`
+	Metric string  `json:"metric"`
+}

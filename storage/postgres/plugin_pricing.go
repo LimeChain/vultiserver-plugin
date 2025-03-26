@@ -26,6 +26,22 @@ func (p *PostgresBackend) findPluginPricingById(ctx context.Context, id string) 
 	return &plugin, nil
 }
 
+func (p *PostgresBackend) FindPluginPricingByPublicKey(ctx context.Context, publicKey string) (*types.PluginPricing, error) {
+	query := fmt.Sprintf(`SELECT * FROM %s WHERE public_key = $1 LIMIT 1;`, PLUGIN_PRICINGS_TABLE)
+
+	rows, err := p.pool.Query(ctx, query, publicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	plugin, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.PluginPricing])
+	if err != nil {
+		return nil, err
+	}
+
+	return &plugin, nil
+}
+
 func (p *PostgresBackend) CreatePluginPricing(
 	ctx context.Context,
 	pluginPricingDto types.PluginPricingCreateDto,

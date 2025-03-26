@@ -50,6 +50,7 @@ type DatabaseStorage interface {
 	DeletePluginById(ctx context.Context, id string) error
 
 	CreatePluginPricing(ctx context.Context, pluginPricingDto types.PluginPricingCreateDto) (*types.PluginPricing, error)
+	FindPluginPricingByPublicKey(ctx context.Context, publicKey string) (*types.PluginPricing, error)
 
 	Pool() *pgxpool.Pool
 }

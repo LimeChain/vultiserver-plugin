@@ -241,6 +241,75 @@ func (uc *Client) GetTokenBalance(signerAddress *common.Address, tokenAddress co
 	return balance, nil
 }
 
+// TODO: this does not belong here
+func (uc *Client) ERC20Transfer(
+	chainID *big.Int,
+	from, to *common.Address,
+	amount *big.Int,
+	nonceOffset uint64,
+) ([]byte, []byte, error) {
+	log.Println("Transfering ERC20 tokens...")
+	transferFromAbi := `[
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "from",
+					"type": "address"
+				},
+				{
+					"internalType": "address",
+					"name": "to",
+					"type": "address"
+				},
+				{
+					"internalType": "uint256",
+					"name": "amount",
+					"type": "uint256"
+				}
+			],
+			"name": "transferFrom",
+			"outputs": [
+				{
+					"internalType": "bool",
+					"name": "",
+					"type": "bool"
+				}
+			],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		}
+	]`
+
+	parsedAbi, err := abi.JSON(strings.NewReader(transferFromAbi))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	packedTx, err := parsedAbi.Pack("transferFrom", from, to, amount)
+	if err != nil {
+		return nil, nil, err
+	}
+	nonce, err := uc.cfg.rpcClient.PendingNonceAt(context.Background(), *from)
+	if err != nil {
+		return nil, nil, err
+	}
+	nonce += nonceOffset
+
+	gasPrice, err := uc.cfg.rpcClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tx := types.NewTransaction(nonce, *uc.cfg.routerAddress, big.NewInt(0), uc.cfg.swapGasLimit, gasPrice, packedTx)
+	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx, chainID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return hash, rawTx, err
+}
+
 func (uc *Client) GetExpectedAmountOut(amountIn *big.Int, path []common.Address) (*big.Int, error) {
 	routerABI := `[
 		{
