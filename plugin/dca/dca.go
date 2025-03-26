@@ -25,7 +25,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/vultisig/mobile-tss-lib/tss"
 )
@@ -42,7 +41,7 @@ const (
 )
 
 var (
-	ErrCompletedPolicy = errors.New("Policy completed all swaps")
+	ErrCompletedPolicy = errors.New("policy completed all swaps")
 )
 
 type DCAPlugin struct {
@@ -74,17 +73,6 @@ func NewDCAPlugin(uniswapCfg *uniswap.Config, db storage.DatabaseStorage, logger
 		db:            db,
 		logger:        logger,
 	}, nil
-}
-
-// TODO: remove from interface
-func (p *DCAPlugin) GetNextNonce(address string) (uint64, error) {
-	return 0, nil
-}
-
-// TODO: do we actually need this?
-func (p *DCAPlugin) SignPluginMessages(e echo.Context) error {
-	p.logger.Debug("DCA: SIGN PLUGIN MESSAGES")
-	return nil
 }
 
 func (p *DCAPlugin) SigningComplete(
