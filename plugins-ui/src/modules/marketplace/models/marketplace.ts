@@ -1,6 +1,6 @@
 export type ViewFilter = "grid" | "list";
 
-export type Plugin = {
+type Plugin = {
   id: string;
   type: string;
   title: string;
@@ -8,4 +8,9 @@ export type Plugin = {
   metadata: {};
   server_endpoint: string;
   pricing_id: string;
+};
+
+export type PluginMap = {
+  plugins: Plugin[];
+  total_count: number;
 };
