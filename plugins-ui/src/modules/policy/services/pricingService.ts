@@ -1,7 +1,7 @@
 import { post } from "@/modules/core/services/httpService";
 import { PluginPricing } from "../models/pluginPricing";
 
-const getPluginUrl = () => import.meta.env.VITE_BASE_URL; // todo this is to be deleted and instead fetched with the policy from DB
+const getPluginUrl = () => import.meta.env.VITE_PLUGIN_URL; // todo this is to be deleted and instead fetched with the policy from DB
 
 const PricingService = {
   createPricing: async (pricing: Omit<PluginPricing, "id">) => {

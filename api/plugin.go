@@ -772,7 +772,10 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, message)
 	}
 
-	created, err := s.db.CreatePluginPricing(c.Request().Context(), pluginPricing)
+	created, err := s.policyService.CreatePricingPolicyWithSync(
+		c.Request().Context(),
+		pluginPricing,
+	)
 	if err != nil {
 		message := echo.Map{
 			"message": "failed to create plugin pricing",

@@ -104,7 +104,7 @@ func NewServer(
 				50000,   // TODO: config
 				time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
 			)
-			plugin, err = dca.NewDCAPlugin(uniswapCfg, db,logger)
+			plugin, err = dca.NewDCAPlugin(uniswapCfg, db, logger)
 			if err != nil {
 				logger.Fatal("fail to initialize DCA plugin: ", err)
 			}
@@ -204,9 +204,6 @@ func (s *Server) StartServer() error {
 			HTML5:      true,
 			Filesystem: http.FS(s.plugin.Frontend()),
 		}))
-
-		// TODO: use AuthMiddleware
-		pluginGroup.POST("/:pluginType/pricings", s.CreatePluginPricingPolicy)
 	}
 
 	// policy mode is always available since it is used by both verifier server and plugin server
@@ -217,6 +214,8 @@ func (s *Server) StartServer() error {
 	pluginGroup.GET("/policy/schema", s.GetPolicySchema)
 	pluginGroup.GET("/policy/:policyId", s.GetPluginPolicyById, s.AuthMiddleware)
 	pluginGroup.DELETE("/policy/:policyId", s.DeletePluginPolicyById)
+
+	pluginGroup.POST("/:pluginType/pricings", s.CreatePluginPricingPolicy)
 
 	if s.mode == "verifier" {
 		e.POST("/login", s.UserLogin)

@@ -19,6 +19,7 @@ type Policy interface {
 	GetPluginPolicies(ctx context.Context, pluginType, publicKey string) ([]types.PluginPolicy, error)
 	GetPluginPolicy(ctx context.Context, policyID string) (types.PluginPolicy, error)
 	GetPluginPolicyTransactionHistory(ctx context.Context, policyID string) ([]types.TransactionHistory, error)
+	CreatePricingPolicyWithSync(ctx context.Context, pluginPricingDto types.PluginPricingCreateDto) (*types.PluginPricing, error)
 }
 
 type PolicyService struct {
@@ -168,4 +169,23 @@ func (s *PolicyService) GetPluginPolicyTransactionHistory(ctx context.Context, p
 	}
 
 	return history, nil
+}
+
+func (s *PolicyService) CreatePricingPolicyWithSync(
+	ctx context.Context, pluginPricingDto types.PluginPricingCreateDto,
+) (*types.PluginPricing, error) {
+	pluginPricing, err := s.db.CreatePluginPricing(ctx, pluginPricingDto)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create plugin pricing: %w", err)
+	}
+
+	// syncer should exist only on plugin instance
+	if s.syncer != nil {
+		err := s.syncer.CreatePricingPolicySync(pluginPricingDto)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sync create pricing policy with verifier: %w", err)
+		}
+	}
+
+	return pluginPricing, nil
 }
