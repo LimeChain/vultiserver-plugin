@@ -39,7 +39,7 @@ func (p *PayrollPlugin) SignPluginMessages(e echo.Context) error {
 	return nil
 }
 
-func (p *PayrollPlugin) Frontend() embed.FS {
+func (p *PayrollPlugin) FrontendSchema() embed.FS {
 	return frontend
 }
 
