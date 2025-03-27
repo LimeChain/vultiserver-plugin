@@ -71,16 +71,14 @@ const Marketplace = () => {
 
   const approveDcaPricingTerms = async () => {
     // dca pricing
-    const pricingPolicy = JSON.stringify({
+    const pricingPolicy = {
       type: 'PER_TX',
       amount: 0.1,
       metric: 'PERCENTAGE'
-    })
+    }
 
     const [account, vault] = await getAccountVault();
-    const signature = await sign(account, pricingPolicy);
-
-    console.log(vault, signature)
+    const signature = await sign(account, JSON.stringify(pricingPolicy));
 
     const pricing = await PricingService.createPricing({
       public_key: vault.publicKeyEcdsa,

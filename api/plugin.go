@@ -862,14 +862,19 @@ func policyToMessageHex(policy types.PluginPolicy, isUpdate bool) (string, error
 }
 
 func pluginPricingToMessageHex(pluginPricing types.PluginPricingCreateDto) (string, error) {
-	// parse raw json and serialize back into string to remove escape characters
-	var serializedPricingPolicy string
-	err := json.Unmarshal(pluginPricing.Pricing, &serializedPricingPolicy)
+	// deserialize and serialize back to validate signed message structure matches the policy model structure
+	var deserialized types.PricingPolicy
+	err := json.Unmarshal(pluginPricing.Pricing, &deserialized)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse pricing policy")
 	}
 
-	return hex.EncodeToString([]byte(serializedPricingPolicy)), nil
+	serialized, err := json.Marshal(deserialized)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize pricing policy")
+	}
+
+	return hex.EncodeToString(serialized), nil
 }
 
 func calculateTransactionHash(txData string) (string, error) {

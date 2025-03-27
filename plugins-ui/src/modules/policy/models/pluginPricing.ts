@@ -6,5 +6,12 @@ export type PluginPricing = {
   chain_code_hex: string,
   derive_path: string,
   signature: string;
-  pricing: string;
+  pricing: PluginPricingPolicy;
+}
+
+type PluginPricingPolicy = {
+  type: string;
+  frequency?: string;
+  amount: number;
+  metric: string;
 }

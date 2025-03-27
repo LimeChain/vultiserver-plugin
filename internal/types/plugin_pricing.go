@@ -24,7 +24,8 @@ type PluginPricing struct {
 }
 
 type PricingPolicy struct {
-	Type   string  `json:"type"`
+	Type string `json:"type"`
+	// Frequency string  `json:"frequency"`
 	Amount float64 `json:"amount"`
 	Metric string  `json:"metric"`
 }
