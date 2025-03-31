@@ -344,18 +344,27 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 		return txs, fmt.Errorf("fail to parse chain ID: %s", dcaPolicy.ChainID)
 	}
 
-	// TODO: check type, support other types
 	var pricingPolicy types.PricingPolicy
 	if err := json.Unmarshal(pricing.Pricing, &pricingPolicy); err != nil {
 		return txs, fmt.Errorf("fail to unmarshal dca pricing policy, err: %w", err)
 	}
+
+	// TODO: read once on plugin init?
+	pluginConfig, err := config.ReadConfig("config-plugin")
+	if err != nil {
+		return nil, fmt.Errorf("fail to read plugin config: %w", err)
+	}
+
 	feeTokenAddress := gcommon.HexToAddress(dcaPolicy.SourceTokenID)
+	feeWalletAddress := gcommon.HexToAddress(pluginConfig.Server.Plugin.Eth.FeeWallet)
 	rawFeeTxs, err := plugin.GenerateFeeTransactions(
 		p.uniswapClient,
 		chainID,
 		signerAddress,
 		&feeTokenAddress,
-		pricingPolicy.Amount,
+		&feeWalletAddress,
+		swapAmount,
+		&pricingPolicy,
 	)
 	if err != nil {
 		return txs, fmt.Errorf("fail to generate fee transaction hash: %w", err)
@@ -366,7 +375,6 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 	if err != nil {
 		return txs, fmt.Errorf("fail to generate transaction hashes: %w", err)
 	}
-
 	rawTxsData = append(rawTxsData, rawSwapTxsData...)
 
 	for _, data := range rawTxsData {
@@ -470,6 +478,8 @@ func (p *DCAPlugin) validateTransaction(keysignRequest types.PluginKeysignReques
 		return fmt.Errorf("fail to parse RLP transaction: %w", err)
 	}
 
+	txType := keysignRequest.TransactionType
+
 	// Validate chain ID
 	if tx.ChainId().Cmp(policyChainID) != 0 {
 		p.logger.Error("chain ID mismatch: ", tx.ChainId().String())
@@ -500,10 +510,13 @@ func (p *DCAPlugin) validateTransaction(keysignRequest types.PluginKeysignReques
 	txDestination := *tx.To()
 
 	switch {
-	case txDestination.Cmp(*p.uniswapClient.GetRouterAddress()) == 0:
+	case txType == "FEE":
+		// Fee transaction
+		return p.validateFeeTransaction(tx)
+	case txType == "SWAP":
 		// Swap transaction
 		return p.validateSwapTransaction(tx, completedSwaps, policyTotalAmount, policyTotalOrders, sourceAddrPolicy, destAddrPolicy, signerAddress)
-	case txDestination.Cmp(*sourceAddrPolicy) == 0:
+	case txType == "APPROVE":
 		// Approve transaction
 		return p.validateApproveTransaction(tx, completedSwaps, policyTotalAmount, policyTotalOrders)
 	default:
@@ -511,6 +524,30 @@ func (p *DCAPlugin) validateTransaction(keysignRequest types.PluginKeysignReques
 		p.logger.Error("invalid transaction destination: ", txDestination.String())
 		return fmt.Errorf("unsupported transaction: %s", txDestination.String())
 	}
+}
+
+func (p *DCAPlugin) validateFeeTransaction(tx *gtypes.Transaction) error {
+	parsedTransferABI, err := p.getTransferABI()
+	if err != nil {
+		p.logger.Error("failed to parse fee ABI: ", err)
+		return fmt.Errorf("failed to parse fee ABI: %w", err)
+	}
+
+	method, err := parsedTransferABI.MethodById(tx.Data())
+	if err != nil {
+		p.logger.Error("failed to find method in fee ABI")
+		return fmt.Errorf("failed to find method in fee ABI: %w", err)
+	}
+
+	if method != nil && method.Name != "transfer" {
+		return fmt.Errorf("unexpected transaction method: expected 'transfer', got %s'", method.Name)
+	}
+
+	if err = p.validateFeeParameters(tx, method); err != nil {
+		return fmt.Errorf("failed to validate fee parameters: %w", err)
+	}
+
+	return nil
 }
 
 func (p *DCAPlugin) validateSwapTransaction(tx *gtypes.Transaction, completedSwaps int64, policyTotalAmount, policyTotalOrders *big.Int, sourceAddrPolicy *gcommon.Address, destAddrPolicy *gcommon.Address, signerAddress *gcommon.Address) error {
@@ -556,6 +593,39 @@ func (p *DCAPlugin) validateApproveTransaction(tx *gtypes.Transaction, completed
 	if err = p.validateApproveParameters(tx, method, completedSwaps, policyTotalAmount, policyTotalOrders); err != nil {
 		return fmt.Errorf("failed to validate approve parameters: %w", err)
 	}
+
+	return nil
+}
+
+func (p *DCAPlugin) validateFeeParameters(tx *gtypes.Transaction, method *abi.Method) error {
+	p.logger.Info("VALIDATING FEE PARAMETERS")
+
+	// Decode the parameters
+	inputData := tx.Data()[4:]
+	decodedParams, err := method.Inputs.Unpack(inputData)
+	if err != nil {
+		return fmt.Errorf("failed to decode approve parameters: %w", err)
+	}
+
+	// Validate receiver address (should be fee wallet)
+	// TODO: read once on plugin init?
+	pluginConfig, err := config.ReadConfig("config-plugin")
+	if err != nil {
+		return fmt.Errorf("fail to read plugin config: %w", err)
+	}
+
+	feeWalletAddress := gcommon.HexToAddress(pluginConfig.Server.Plugin.Eth.FeeWallet)
+
+	receiver, ok := decodedParams[0].(gcommon.Address)
+	if !ok {
+		return fmt.Errorf("failed to parse receiver address: invalid format")
+	}
+
+	if receiver.Cmp(feeWalletAddress) != 0 {
+		return fmt.Errorf("invalid receiver address: expected=%s, got=%s", feeWalletAddress.String(), receiver.String())
+	}
+
+	// Note: no way to validate amount (of PERCENTAGE metric) as we do not know what the amount in the next tx would be
 
 	return nil
 }
@@ -633,6 +703,36 @@ func (p *DCAPlugin) validateSwapParameters(tx *gtypes.Transaction, method *abi.M
 	}
 
 	return nil
+}
+
+func (p *DCAPlugin) getTransferABI() (abi.ABI, error) {
+	transferABI := `[
+		{
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "transfer",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+	]`
+	return abi.JSON(strings.NewReader(transferABI))
 }
 
 func (p *DCAPlugin) getSwapABI() (abi.ABI, error) {

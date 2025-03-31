@@ -25,6 +25,7 @@ type Config struct {
 					V2Router string `mapstructure:"v2_router" json:"v2_router,omitempty"`
 					Deadline int64  `mapstructure:"deadline" json:"deadline,omitempty"`
 				} `mapstructure:"uniswap" json:"uniswap,omitempty"`
+				FeeWallet string `mapstructure:"fee_wallet" json:"fee_wallet,omitempty"`
 			} `mapstructure:"eth" json:"eth,omitempty"`
 		} `mapstructure:"plugin" json:"plugin,omitempty"`
 		UserAuth struct {

@@ -249,7 +249,7 @@ func (uc *Client) ERC20Transfer(
 	nonceOffset uint64,
 ) ([]byte, []byte, error) {
 	log.Println("Transfering ERC20 tokens...")
-	transferFromAbi := `[
+	transferABI := `[
 		{
       "inputs": [
         {
@@ -276,7 +276,7 @@ func (uc *Client) ERC20Transfer(
     }
 	]`
 
-	parsedAbi, err := abi.JSON(strings.NewReader(transferFromAbi))
+	parsedAbi, err := abi.JSON(strings.NewReader(transferABI))
 	if err != nil {
 		return nil, nil, err
 	}

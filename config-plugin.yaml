@@ -15,6 +15,7 @@ server:
       uniswap:
         v2_router: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
         deadline: 5 # minutes
+      fee_wallet: 0xa1172EcfaB3f313d0f0975717106a04626E4d485
 
 relay:
   server: https://api.vultisig.com/router
