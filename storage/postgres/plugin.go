@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/internal/types"
 )
 
@@ -50,20 +51,57 @@ func (p *PostgresBackend) FindPluginById(ctx context.Context, id string) (*types
 	return &plugin, nil
 }
 
-func (p *PostgresBackend) FindPluginByType(ctx context.Context, pluginType string) (*types.Plugin, error) {
-	query := fmt.Sprintf(`SELECT * FROM %s WHERE type = $1 LIMIT 1;`, PLUGINS_TABLE)
-
-	rows, err := p.pool.Query(ctx, query, pluginType)
-	if err != nil {
-		return nil, err
+func (p *PostgresBackend) FindPlugins(ctx context.Context, skip int, take int, sort string) (types.PlugisDto, error) {
+	if p.pool == nil {
+		return types.PlugisDto{}, fmt.Errorf("database pool is nil")
 	}
 
-	plugin, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Plugin])
+	orderBy, orderDirection := common.GetSortingCondition(sort)
+
+	query := fmt.Sprintf(`
+		SELECT *, COUNT(*) OVER() AS total_count
+		FROM %s
+		ORDER BY %s %s
+		LIMIT $1 OFFSET $2`, PLUGINS_TABLE, orderBy, orderDirection)
+
+	rows, err := p.pool.Query(ctx, query, take, skip)
 	if err != nil {
-		return nil, err
+		return types.PlugisDto{}, err
 	}
 
-	return &plugin, nil
+	defer rows.Close()
+
+	var plugins []types.Plugin
+	var totalCount int
+
+	for rows.Next() {
+		var plugin types.Plugin
+
+		err := rows.Scan(
+			&plugin.ID,
+			&plugin.CreatedAt,
+			&plugin.UpdatedAt,
+			&plugin.Type,
+			&plugin.Title,
+			&plugin.Description,
+			&plugin.Metadata,
+			&plugin.ServerEndpoint,
+			&plugin.PricingID,
+			&totalCount,
+		)
+		if err != nil {
+			return types.PlugisDto{}, err
+		}
+
+		plugins = append(plugins, plugin)
+	}
+
+	pluginsDto := types.PlugisDto{
+		Plugins:    plugins,
+		TotalCount: totalCount,
+	}
+
+	return pluginsDto, nil
 }
 
 func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (*types.Plugin, error) {

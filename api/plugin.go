@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -62,7 +63,7 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 		return fmt.Errorf("failed to initialize plugin: %w", err)
 	}
 
-	if err := plg.ValidateTransactionProposal(policy, []types.PluginKeysignRequest{req}); err != nil {
+	if err := plg.ValidateProposedTransactions(policy, []types.PluginKeysignRequest{req}); err != nil {
 		return fmt.Errorf("failed to validate transaction proposal: %w", err)
 	}
 
@@ -603,7 +604,21 @@ func (s *Server) DeletePricing(c echo.Context) error {
 }
 
 func (s *Server) GetPlugins(c echo.Context) error {
-	plugins, err := s.db.FindPlugins(c.Request().Context())
+	skip, err := strconv.Atoi(c.QueryParam("skip"))
+
+	if err != nil {
+		skip = 0
+	}
+
+	take, err := strconv.Atoi(c.QueryParam("take"))
+
+	if err != nil {
+		take = 999
+	}
+
+	sort := c.QueryParam("sort")
+
+	plugins, err := s.db.FindPlugins(c.Request().Context(), skip, take, sort)
 	if err != nil {
 		message := echo.Map{
 			"message": "failed to get plugins",
