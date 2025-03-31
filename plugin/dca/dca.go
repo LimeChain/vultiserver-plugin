@@ -384,17 +384,25 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 	if err := json.Unmarshal(pricing.Pricing, &pricingPolicy); err != nil {
 		return txs, fmt.Errorf("fail to unmarshal dca pricing policy, err: %w", err)
 	}
-	rawFeeTx, err := plugin.GenerateFeeTransaction(p.uniswapClient, chainID, signerAddress, pricingPolicy.Amount)
+	feeTokenAddress := gcommon.HexToAddress(dcaPolicy.SourceTokenID)
+	rawFeeTxs, err := plugin.GenerateFeeTransactions(
+		p.uniswapClient,
+		chainID,
+		signerAddress,
+		&feeTokenAddress,
+		pricingPolicy.Amount,
+	)
 	if err != nil {
 		return txs, fmt.Errorf("fail to generate fee transaction hash: %w", err)
 	}
+	rawTxsData := rawFeeTxs
 
 	rawSwapTxsData, err := p.generateSwapTransactions(chainID, signerAddress, dcaPolicy.SourceTokenID, dcaPolicy.DestinationTokenID, swapAmount)
 	if err != nil {
 		return txs, fmt.Errorf("fail to generate transaction hashes: %w", err)
 	}
 
-	rawTxsData := append([]plugin.RawTxData{*rawFeeTx}, rawSwapTxsData...)
+	rawTxsData = append(rawTxsData, rawSwapTxsData...)
 
 	for _, data := range rawTxsData {
 		signRequest := types.PluginKeysignRequest{

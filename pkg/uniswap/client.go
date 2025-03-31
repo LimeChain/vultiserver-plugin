@@ -241,44 +241,39 @@ func (uc *Client) GetTokenBalance(signerAddress *common.Address, tokenAddress co
 	return balance, nil
 }
 
-// TODO: this does not belong here
+// TODO: this does not belong here as it's not uniswap related
 func (uc *Client) ERC20Transfer(
 	chainID *big.Int,
-	from, to *common.Address,
+	tokenAddress, from, to *common.Address,
 	amount *big.Int,
 	nonceOffset uint64,
 ) ([]byte, []byte, error) {
 	log.Println("Transfering ERC20 tokens...")
 	transferFromAbi := `[
 		{
-			"inputs": [
-				{
-					"internalType": "address",
-					"name": "from",
-					"type": "address"
-				},
-				{
-					"internalType": "address",
-					"name": "to",
-					"type": "address"
-				},
-				{
-					"internalType": "uint256",
-					"name": "amount",
-					"type": "uint256"
-				}
-			],
-			"name": "transferFrom",
-			"outputs": [
-				{
-					"internalType": "bool",
-					"name": "",
-					"type": "bool"
-				}
-			],
-			"stateMutability": "nonpayable",
-			"type": "function"
-		}
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "transfer",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
 	]`
 
 	parsedAbi, err := abi.JSON(strings.NewReader(transferFromAbi))
@@ -286,7 +281,7 @@ func (uc *Client) ERC20Transfer(
 		return nil, nil, err
 	}
 
-	packedTx, err := parsedAbi.Pack("transferFrom", from, to, amount)
+	packedTx, err := parsedAbi.Pack("transfer", to, amount)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -301,7 +296,8 @@ func (uc *Client) ERC20Transfer(
 		return nil, nil, err
 	}
 
-	tx := types.NewTransaction(nonce, *uc.cfg.routerAddress, big.NewInt(0), uc.cfg.swapGasLimit, gasPrice, packedTx)
+	tx := types.NewTransaction(nonce, *tokenAddress, big.NewInt(0), uc.cfg.swapGasLimit, gasPrice, packedTx)
+
 	hash, rawTx, err := uc.rlpUnsignedTxAndHash(tx, chainID)
 	if err != nil {
 		return nil, nil, err
