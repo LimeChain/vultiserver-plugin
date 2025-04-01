@@ -22,9 +22,9 @@ func GenerateFeeTransactions(
 	feeTokenAddress *common.Address,
 	feeRecipientAddress *common.Address,
 	taxBase *big.Int,
+	nonceOffset uint64,
 	pricingPolicy *types.PricingPolicy,
 ) ([]RawTxData, error) {
-	nonceOffset := uint64(0)
 	var rawTxsData []RawTxData
 
 	amount := big.NewInt(0)

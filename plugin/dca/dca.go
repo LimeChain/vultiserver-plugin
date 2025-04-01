@@ -357,6 +357,7 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 
 	feeTokenAddress := gcommon.HexToAddress(dcaPolicy.SourceTokenID)
 	feeWalletAddress := gcommon.HexToAddress(pluginConfig.Server.Plugin.Eth.FeeWallet)
+	nonceOffset := uint64(0)
 	rawFeeTxs, err := plugin.GenerateFeeTransactions(
 		p.uniswapClient,
 		chainID,
@@ -364,14 +365,16 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 		&feeTokenAddress,
 		&feeWalletAddress,
 		swapAmount,
+		nonceOffset,
 		&pricingPolicy,
 	)
 	if err != nil {
 		return txs, fmt.Errorf("fail to generate fee transaction hash: %w", err)
 	}
 	rawTxsData := rawFeeTxs
+	nonceOffset = nonceOffset + uint64(len(rawTxsData))
 
-	rawSwapTxsData, err := p.generateSwapTransactions(chainID, signerAddress, dcaPolicy.SourceTokenID, dcaPolicy.DestinationTokenID, swapAmount)
+	rawSwapTxsData, err := p.generateSwapTransactions(chainID, signerAddress, dcaPolicy.SourceTokenID, dcaPolicy.DestinationTokenID, swapAmount, nonceOffset)
 	if err != nil {
 		return txs, fmt.Errorf("fail to generate transaction hashes: %w", err)
 	}
@@ -798,7 +801,13 @@ func (p *DCAPlugin) FrontendSchema() embed.FS {
 	return embed.FS{}
 }
 
-func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gcommon.Address, srcToken, destToken string, swapAmount *big.Int) ([]plugin.RawTxData, error) {
+func (p *DCAPlugin) generateSwapTransactions(
+	chainID *big.Int,
+	signerAddress *gcommon.Address,
+	srcToken, destToken string,
+	swapAmount *big.Int,
+	nonceOffset uint64,
+) ([]plugin.RawTxData, error) {
 	srcTokenAddress := gcommon.HexToAddress(srcToken)
 	destTokenAddress := gcommon.HexToAddress(destToken)
 
@@ -813,17 +822,16 @@ func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gc
 	p.logger.Info("DCA: ALLOWANCE: ", allowance.String())
 
 	// Propose APPROVE if allowance is insufficient
-	var swapNonce uint64
 	if allowance.Cmp(swapAmount) < 0 {
-		txHash, rawTx, err := p.uniswapClient.ApproveERC20Token(chainID, signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), swapAmount, 0)
+		txHash, rawTx, err := p.uniswapClient.ApproveERC20Token(chainID, signerAddress, srcTokenAddress, *p.uniswapClient.GetRouterAddress(), swapAmount, nonceOffset)
 		if err != nil {
 			return []plugin.RawTxData{}, fmt.Errorf("failed to make APPROVE transaction: %w", err)
 		}
 		rawTxsData = append(rawTxsData, plugin.RawTxData{txHash, rawTx, "APPROVE"})
 		p.logger.Info("DCA: Proposed APPROVE transaction")
-		swapNonce = 1
+		nonceOffset++
 	}
-	p.logger.Info("DCA: SWAP NONCE: ", swapNonce)
+	p.logger.Info("DCA: SWAP NONCE: ", nonceOffset)
 
 	// Propose SWAP transaction
 	tokensPair := []gcommon.Address{srcTokenAddress, destTokenAddress}
@@ -836,7 +844,7 @@ func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gc
 	slippagePercentage := 1.0
 	amountOutMin := p.uniswapClient.CalculateAmountOutMin(expectedAmountOut, slippagePercentage)
 
-	txHash, rawTx, err := p.uniswapClient.SwapTokens(chainID, signerAddress, swapAmount, amountOutMin, tokensPair, swapNonce)
+	txHash, rawTx, err := p.uniswapClient.SwapTokens(chainID, signerAddress, swapAmount, amountOutMin, tokensPair, nonceOffset)
 	if err != nil {
 		return []plugin.RawTxData{}, fmt.Errorf("failed to make SWAP transaction: %w", err)
 	}
