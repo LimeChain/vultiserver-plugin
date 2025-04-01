@@ -736,6 +736,7 @@ func (s *Server) DeletePlugin(c echo.Context) error {
 }
 
 func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
+	// parse input
 	pluginType := c.Param("pluginType")
 	if pluginType == "" {
 		return c.JSON(http.StatusBadRequest, echo.Map{
@@ -755,27 +756,11 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 			"message": err.Error(),
 		})
 	}
-
-	// TODO: this goes into verifier only
-	// validate plugin type with pricing exists
-	// if pluginType != pluginPricing.PluginType {
-	// 	return c.JSON(http.StatusBadRequest, echo.Map{
-	// 		"message": "plugin type does not match payload",
-	// 	})
-	// }
-	// plugin, err := s.db.FindPluginByType(c.Request().Context(), pluginType)
-	// if err != nil {
-	// 	return c.JSON(http.StatusBadRequest, echo.Map{
-	// 		"message": "plugin not found",
-	// 	})
-	// }
-	// pricing, err := s.db.FindPricingById(c.Request().Context(), plugin.ID)
-	// if err != nil {
-	// 	return c.JSON(http.StatusBadRequest, echo.Map{
-	// 		"message": "plugin pricing not found",
-	// 	})
-	// }
-	// TODO: validate signed policy matches the one of plugin
+	if pluginType != pluginPricing.PluginType {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "plugin type does not match payload",
+		})
+	}
 
 	// validate signature
 	if !s.verifyPluginPricingSignature(pluginPricing) {
@@ -787,6 +772,23 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, message)
 	}
 
+	// check if alredy exists
+	pricings, err := s.db.FindPricingsBy(c.Request().Context(), map[string]interface{}{
+		"public_key":  pluginPricing.PublicKey,
+		"plugin_type": pluginPricing.PluginType,
+	})
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "failed to fetch plugin pricings",
+		})
+	}
+	if len(pricings) > 0 {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "user already signed pricing policy for this plugin",
+		})
+	}
+
+	// create
 	created, err := s.policyService.CreatePricingPolicyWithSync(
 		c.Request().Context(),
 		pluginPricing,

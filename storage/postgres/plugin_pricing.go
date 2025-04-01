@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/vultisig/vultisigner/internal/types"
@@ -40,6 +41,39 @@ func (p *PostgresBackend) FindPluginPricingByPublicKey(ctx context.Context, publ
 	}
 
 	return &plugin, nil
+}
+
+func (p *PostgresBackend) FindPricingsBy(ctx context.Context, filters map[string]interface{}) ([]types.PluginPricing, error) {
+	query := fmt.Sprintf(`SELECT * FROM %s`, PLUGIN_PRICINGS_TABLE)
+
+	// apply filters, if any
+	paramIndex := 0
+	var args []any
+	for key, value := range filters {
+		if paramIndex == 0 {
+			query += " WHERE "
+		} else {
+			query += " AND "
+		}
+
+		paramIndex++
+
+		query += fmt.Sprintf("%s = $%s", key, strconv.Itoa(paramIndex))
+		args = append(args, value)
+	}
+
+	rows, err := p.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+
+	}
+
+	collection, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.PluginPricing])
+	if err != nil {
+		return nil, err
+	}
+
+	return collection, nil
 }
 
 func (p *PostgresBackend) CreatePluginPricing(
