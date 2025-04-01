@@ -287,10 +287,18 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 	var txs []types.PluginKeysignRequest
 
 	// validate user pricing policy
-	pricing, err := p.db.FindPluginPricingByPublicKey(ctx, policy.PublicKey)
+	pricings, err := p.db.FindPluginPricingsBy(ctx, map[string]interface{}{
+		"public_key":  policy.PublicKey,
+		"plugin_type": policy.PluginType,
+	})
 	if err != nil {
 		return txs, fmt.Errorf("fail to find plugin pricing policy: %w", err)
 	}
+	if len(pricings) == 0 {
+		return txs, errors.New("no plugin pricing policy found")
+	}
+	pricing := &pricings[0]
+
 	if err = common.ValidatePluginPricingPolicy(pricing, pluginType); err != nil {
 		return txs, fmt.Errorf("fail to validate plugin pricing policy: %w", err)
 	}
