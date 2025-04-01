@@ -773,7 +773,7 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 	}
 
 	// check if alredy exists
-	pricings, err := s.db.FindPricingsBy(c.Request().Context(), map[string]interface{}{
+	pricings, err := s.db.FindPluginPricingsBy(c.Request().Context(), map[string]interface{}{
 		"public_key":  pluginPricing.PublicKey,
 		"plugin_type": pluginPricing.PluginType,
 	})
@@ -786,6 +786,41 @@ func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{
 			"message": "user already signed pricing policy for this plugin",
 		})
+	}
+
+	// validate signed pricing policy comply with plugin pricing policy
+	if s.mode == "verifier" {
+		// only verifier have access to pricing definition for a given plugin
+		// this validation will trigger during tx create sync (as the same endpoint gets hit on verifier side)
+		plugin, err := s.db.FindPluginByType(c.Request().Context(), pluginPricing.PluginType)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, echo.Map{
+				"message": "plugin not found",
+			})
+		}
+
+		pricing, err := s.db.FindPricingById(c.Request().Context(), plugin.PricingID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, echo.Map{
+				"message": "pricing not found",
+			})
+		}
+
+		var deserialized types.PricingPolicy
+		err = json.Unmarshal(pluginPricing.Pricing, &deserialized)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, echo.Map{
+				"message": "failed to parse pricing policy",
+			})
+		}
+
+		if pricing.Type != deserialized.Type ||
+			pricing.Metric != deserialized.Metric ||
+			pricing.Amount != deserialized.Amount {
+			return c.JSON(http.StatusBadRequest, echo.Map{
+				"message": "signed fee policy does not comply with plugin fee policy",
+			})
+		}
 	}
 
 	// create

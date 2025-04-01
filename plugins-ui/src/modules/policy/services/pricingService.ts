@@ -6,7 +6,7 @@ const getPluginUrl = () => import.meta.env.VITE_PLUGIN_URL; // todo this is to b
 const PricingService = {
   createPricing: async (pricing: Omit<PluginPricing, "id">) => {
     try {
-      const endpoint = `${getPluginUrl()}/plugin/${encodeURIComponent(pricing.plugin_type)}/pricings`;
+      const endpoint = `${getPluginUrl()}/plugin/${encodeURIComponent(pricing.plugin_type)}/pricing-policy`;
       const newPricing = await post(endpoint, pricing);
       return newPricing;
     } catch (error) {

@@ -44,12 +44,13 @@ type DatabaseStorage interface {
 
 	FindPlugins(ctx context.Context, skip int, take int, sort string) (types.PlugisDto, error)
 	FindPluginById(ctx context.Context, id string) (*types.Plugin, error)
+	FindPluginByType(ctx context.Context, pluginType string) (*types.Plugin, error)
 	CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (*types.Plugin, error)
 	UpdatePlugin(ctx context.Context, id string, updates types.PluginUpdateDto) (*types.Plugin, error)
 	DeletePluginById(ctx context.Context, id string) error
 
 	FindPluginPricingByPublicKey(ctx context.Context, publicKey string) (*types.PluginPricing, error)
-	FindPricingsBy(ctx context.Context, filters map[string]interface{}) ([]types.PluginPricing, error)
+	FindPluginPricingsBy(ctx context.Context, filters map[string]interface{}) ([]types.PluginPricing, error)
 	CreatePluginPricing(ctx context.Context, pluginPricingDto types.PluginPricingCreateDto) (*types.PluginPricing, error)
 
 	Pool() *pgxpool.Pool

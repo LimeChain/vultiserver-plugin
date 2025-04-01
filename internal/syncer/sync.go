@@ -209,7 +209,7 @@ func (s *Syncer) CreatePricingPolicySync(pricingPolicy types.PluginPricingCreate
 			return fmt.Errorf("fail to marshal policy: %w", err)
 		}
 
-		url := fmt.Sprintf("%s/plugin/%s/pricings", s.serverAddr, pricingPolicy.PluginType)
+		url := fmt.Sprintf("%s/plugin/%s/pricing-policy", s.serverAddr, pricingPolicy.PluginType)
 
 		resp, err := s.client.Post(url, "application/json", bytes.NewBuffer(policyBytes))
 		if err != nil {

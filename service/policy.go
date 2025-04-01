@@ -183,6 +183,7 @@ func (s *PolicyService) CreatePricingPolicyWithSync(
 	if s.syncer != nil {
 		err := s.syncer.CreatePricingPolicySync(pluginPricingDto)
 		if err != nil {
+			// Note: previous result is not rolled back here
 			return nil, fmt.Errorf("failed to sync create pricing policy with verifier: %w", err)
 		}
 	}

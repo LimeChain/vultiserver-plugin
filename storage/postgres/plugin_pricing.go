@@ -43,7 +43,7 @@ func (p *PostgresBackend) FindPluginPricingByPublicKey(ctx context.Context, publ
 	return &plugin, nil
 }
 
-func (p *PostgresBackend) FindPricingsBy(ctx context.Context, filters map[string]interface{}) ([]types.PluginPricing, error) {
+func (p *PostgresBackend) FindPluginPricingsBy(ctx context.Context, filters map[string]interface{}) ([]types.PluginPricing, error) {
 	query := fmt.Sprintf(`SELECT * FROM %s`, PLUGIN_PRICINGS_TABLE)
 
 	// apply filters, if any

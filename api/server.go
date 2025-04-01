@@ -204,9 +204,9 @@ func (s *Server) StartServer() error {
 			HTML5:      true,
 			Filesystem: http.FS(s.plugin.FrontendSchema()),
 		}))
-
-		pluginGroup.POST("/:pluginType/pricings", s.CreatePluginPricingPolicy)
 	}
+
+	pluginGroup.POST("/:pluginType/pricing-policy", s.CreatePluginPricingPolicy)
 
 	// policy mode is always available since it is used by both verifier server and plugin server
 	pluginGroup.POST("/policy", s.CreatePluginPolicy)

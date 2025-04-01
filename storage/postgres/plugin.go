@@ -84,6 +84,22 @@ func (p *PostgresBackend) FindPluginById(ctx context.Context, id string) (*types
 	return &plugin, nil
 }
 
+func (p *PostgresBackend) FindPluginByType(ctx context.Context, pluginType string) (*types.Plugin, error) {
+	query := fmt.Sprintf(`SELECT * FROM %s WHERE type = $1 LIMIT 1;`, PLUGINS_TABLE)
+
+	rows, err := p.pool.Query(ctx, query, pluginType)
+	if err != nil {
+		return nil, err
+	}
+
+	plugin, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Plugin])
+	if err != nil {
+		return nil, err
+	}
+
+	return &plugin, nil
+}
+
 func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (*types.Plugin, error) {
 	query := fmt.Sprintf(`INSERT INTO %s (
 		type,
