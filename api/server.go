@@ -204,6 +204,8 @@ func (s *Server) StartServer() error {
 			HTML5:      true,
 			Filesystem: http.FS(s.plugin.FrontendSchema()),
 		}))
+
+		pluginGroup.GET("/:pluginType/pricing-policy", s.GetPluginPricingPolicy, s.AuthMiddleware)
 	}
 
 	pluginGroup.POST("/:pluginType/pricing-policy", s.CreatePluginPricingPolicy)

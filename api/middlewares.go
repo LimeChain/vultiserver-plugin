@@ -25,6 +25,7 @@ func (s *Server) statsdMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+// to be used in marketplace
 func (s *Server) userAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cfg, err := config.ReadConfig("config-verifier")

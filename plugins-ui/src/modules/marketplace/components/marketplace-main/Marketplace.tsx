@@ -71,6 +71,8 @@ const Marketplace = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  const [dcaIsApproved, setDcaIsApproved] = useState(true);
+
   const changeView = (view: ViewFilter) => {
     localStorage.setItem("view", view);
     setView(view);
@@ -97,8 +99,9 @@ const Marketplace = () => {
       pricing: pricingPolicy
     })
 
-    console.log('pricing', pricing)
+    console.log('plugin pricing created', pricing)
   }
+
   const [toast, setToast] = useState<{
     message: string;
     error?: string;
@@ -106,6 +109,16 @@ const Marketplace = () => {
   } | null>(null);
 
   const [pluginsMap, setPlugins] = useState<PluginMap | null>(null);
+
+  useEffect(() => {
+    const fetchDcaPluginPricingPolicy = async (): Promise<void> => {
+      const pricing = await PricingService.getPluginPricing('dca');
+      console.log('plugin pricing set', pricing);
+      setDcaIsApproved(pricing ? true : false);
+    };
+
+    fetchDcaPluginPricingPolicy();
+  }, []);
 
   useEffect(() => {
     const fetchPlugins = async (): Promise<void> => {
@@ -183,14 +196,16 @@ const Marketplace = () => {
             Open Detail view
           </Button>
 
-          <Button
-            size="small"
-            type="button"
-            styleType="primary"
-            onClick={approveDcaPricingTerms}
-          >
-            Approve DCA pricing terms
-          </Button>
+          {!dcaIsApproved && (
+            <Button
+              size="small"
+              type="button"
+              styleType="primary"
+              onClick={approveDcaPricingTerms}
+            >
+              Approve DCA pricing terms
+            </Button>
+          )}
         </div>
       )}
 

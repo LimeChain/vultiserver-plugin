@@ -735,6 +735,49 @@ func (s *Server) DeletePlugin(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+func (s *Server) GetPluginPricingPolicy(c echo.Context) error {
+	publicKey := c.Request().Header.Get("public_key")
+	if publicKey == "" {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "public key is invalid",
+			"error":   "public key is required",
+		})
+	}
+
+	pluginType := c.Request().Header.Get("plugin_type")
+	pluginTypeParam := c.Param("pluginType")
+	if pluginTypeParam == "" {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "plugin type is invalid",
+			"error":   "plugin type is required",
+		})
+	}
+	if pluginType != pluginTypeParam {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "plugin type is invalid",
+			"error":   "plugin type header does not match path param",
+		})
+	}
+
+	pricings, err := s.db.FindPluginPricingsBy(c.Request().Context(), map[string]interface{}{
+		"public_key":  publicKey,
+		"plugin_type": pluginType,
+	})
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "failed to fetch plugin pricings",
+		})
+	}
+	if len(pricings) == 0 {
+		return c.JSON(http.StatusOK, nil)
+	}
+
+	// should be one per plugin type for each user
+	pricing := pricings[0]
+
+	return c.JSON(http.StatusOK, pricing)
+}
+
 func (s *Server) CreatePluginPricingPolicy(c echo.Context) error {
 	// parse input
 	pluginType := c.Param("pluginType")
