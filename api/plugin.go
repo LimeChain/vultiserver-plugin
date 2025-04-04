@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -706,6 +707,83 @@ func (s *Server) DeletePlugin(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+func (s *Server) CreateReview(c echo.Context) error {
+	var review types.ReviewCreateDto
+	if err := c.Bind(&review); err != nil {
+		return fmt.Errorf("fail to parse request, err: %w", err)
+	}
+
+	if err := c.Validate(&review); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": err.Error(),
+		})
+	}
+
+	review.Comment = html.EscapeString(review.Comment) // Converts to safe string to prevent XSS todo rework this it escapes ' < when it shouldn't
+
+	pluginID := c.Param("pluginId")
+	if pluginID == "" {
+		err := fmt.Errorf("plugin id is required")
+		message := echo.Map{
+			"message": "failed to get plugin",
+			"error":   err.Error(),
+		}
+		s.logger.Error(err)
+
+		return c.JSON(http.StatusBadRequest, message)
+	}
+
+	created, err := s.db.CreateReview(c.Request().Context(), review, pluginID)
+	if err != nil {
+		message := echo.Map{
+			"message": "failed to create review",
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
+	}
+
+	return c.JSON(http.StatusOK, created)
+}
+
+func (s *Server) GetReviews(c echo.Context) error {
+	pluginId := c.Param("pluginId")
+	if pluginId == "" {
+		err := fmt.Errorf("plugin id is required")
+		message := echo.Map{
+			"message": "failed to get plugin",
+			"error":   err.Error(),
+		}
+		s.logger.Error(err)
+
+		return c.JSON(http.StatusBadRequest, message)
+	}
+
+	skip, err := strconv.Atoi(c.QueryParam("skip"))
+
+	if err != nil {
+		skip = 0
+	}
+
+	take, err := strconv.Atoi(c.QueryParam("take"))
+
+	if err != nil {
+		take = 999
+	}
+
+	sort := c.QueryParam("sort")
+
+	reviews, err := s.db.FindReviews(c.Request().Context(), pluginId, skip, take, sort)
+	if err != nil {
+		message := echo.Map{
+			"message": "failed to get reviews",
+		}
+		s.logger.Error(err)
+		return c.JSON(http.StatusInternalServerError, message)
+	}
+
+	return c.JSON(http.StatusOK, reviews)
 }
 
 func (s *Server) verifyPolicySignature(policy types.PluginPolicy, update bool) bool {

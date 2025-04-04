@@ -43,10 +43,14 @@ type DatabaseStorage interface {
 	GetTransactionByHash(ctx context.Context, txHash string) (*types.TransactionHistory, error)
 
 	FindPlugins(ctx context.Context, take int, skip int, sort string) (types.PlugisDto, error)
-	FindPluginById(ctx context.Context, id string) (*types.Plugin, error)
-	CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (*types.Plugin, error)
-	UpdatePlugin(ctx context.Context, id string, updates types.PluginUpdateDto) (*types.Plugin, error)
+	FindPluginById(ctx context.Context, id string) (types.PluginDto, error)
+	CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (types.PluginDto, error)
+	UpdatePlugin(ctx context.Context, id string, updates types.PluginUpdateDto) (types.PluginDto, error)
 	DeletePluginById(ctx context.Context, id string) error
+
+	CreateReview(ctx context.Context, reviewDto types.ReviewCreateDto, pluginId string) (types.ReviewDto, error)
+	FindReviews(ctx context.Context, pluginId string, take int, skip int, sort string) (types.ReviewsDto, error)
+	FindRatingByPluginId(ctx context.Context, pluginId string) ([]types.PluginRatingDto, error)
 
 	Pool() *pgxpool.Pool
 }

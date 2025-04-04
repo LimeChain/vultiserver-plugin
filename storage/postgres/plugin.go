@@ -15,20 +15,37 @@ import (
 
 const PLUGINS_TABLE = "plugins"
 
-func (p *PostgresBackend) FindPluginById(ctx context.Context, id string) (*types.Plugin, error) {
+func (p *PostgresBackend) FindPluginById(ctx context.Context, id string) (types.PluginDto, error) {
 	query := fmt.Sprintf(`SELECT * FROM %s WHERE id = $1 LIMIT 1;`, PLUGINS_TABLE)
 
 	rows, err := p.pool.Query(ctx, query, id)
 	if err != nil {
-		return nil, err
+		return types.PluginDto{}, err
 	}
 
 	plugin, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Plugin])
 	if err != nil {
-		return nil, err
+		return types.PluginDto{}, err
 	}
 
-	return &plugin, nil
+	ratings, err := p.FindRatingByPluginId(ctx, plugin.ID)
+	if err != nil {
+		return types.PluginDto{}, err
+	}
+
+	var pluginDto types.PluginDto
+
+	pluginDto.ID = plugin.ID
+	pluginDto.CreatedAt = plugin.CreatedAt
+	pluginDto.UpdatedAt = plugin.UpdatedAt
+	pluginDto.Type = plugin.Type
+	pluginDto.Title = plugin.Title
+	pluginDto.Description = plugin.Description
+	pluginDto.Metadata = plugin.Metadata
+	pluginDto.ServerEndpoint = plugin.ServerEndpoint
+	pluginDto.Ratings = ratings
+
+	return pluginDto, nil
 }
 
 func (p *PostgresBackend) FindPlugins(ctx context.Context, skip int, take int, sort string) (types.PlugisDto, error) {
@@ -36,7 +53,8 @@ func (p *PostgresBackend) FindPlugins(ctx context.Context, skip int, take int, s
 		return types.PlugisDto{}, fmt.Errorf("database pool is nil")
 	}
 
-	orderBy, orderDirection := common.GetSortingCondition(sort)
+	allowedSortingColumns := map[string]bool{"updated_at": true, "created_at": true, "title": true}
+	orderBy, orderDirection := common.GetSortingCondition(sort, allowedSortingColumns)
 
 	query := fmt.Sprintf(`
 		SELECT *, COUNT(*) OVER() AS total_count
@@ -84,7 +102,7 @@ func (p *PostgresBackend) FindPlugins(ctx context.Context, skip int, take int, s
 	return pluginsDto, nil
 }
 
-func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (*types.Plugin, error) {
+func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.PluginCreateDto) (types.PluginDto, error) {
 	query := fmt.Sprintf(`INSERT INTO %s (
 		type,
 		title,
@@ -112,13 +130,21 @@ func (p *PostgresBackend) CreatePlugin(ctx context.Context, pluginDto types.Plug
 	var createdId string
 	err := p.pool.QueryRow(ctx, query, args).Scan(&createdId)
 	if err != nil {
-		return nil, err
+		return types.PluginDto{}, err
+	}
+
+	ratingQuery := `INSERT INTO plugin_rating (plugin_id, rating, count) 
+          VALUES ($1, 1, 0), ($1, 2, 0), ($1, 3, 0), ($1, 4, 0), ($1, 5, 0)`
+
+	_, err = p.pool.Exec(ctx, ratingQuery, createdId)
+	if err != nil {
+		return types.PluginDto{}, err
 	}
 
 	return p.FindPluginById(ctx, createdId)
 }
 
-func (p *PostgresBackend) UpdatePlugin(ctx context.Context, id string, updates types.PluginUpdateDto) (*types.Plugin, error) {
+func (p *PostgresBackend) UpdatePlugin(ctx context.Context, id string, updates types.PluginUpdateDto) (types.PluginDto, error) {
 	t := reflect.TypeOf(updates)
 	v := reflect.ValueOf(updates)
 	numFields := t.NumField()
@@ -159,7 +185,7 @@ func (p *PostgresBackend) UpdatePlugin(ctx context.Context, id string, updates t
 	}
 
 	if len(updateStatements) == 0 {
-		return nil, errors.New("No updates provided")
+		return types.PluginDto{}, errors.New("no updates provided")
 	}
 
 	query += strings.Join(updateStatements, ", ")
@@ -167,7 +193,7 @@ func (p *PostgresBackend) UpdatePlugin(ctx context.Context, id string, updates t
 
 	_, err := p.pool.Exec(ctx, query, args)
 	if err != nil {
-		return nil, err
+		return types.PluginDto{}, err
 	}
 
 	return p.FindPluginById(ctx, id)
