@@ -5,7 +5,7 @@ import {
   Review,
   ReviewMap,
 } from "../models/marketplace";
-import { Plugin } from "@/modules/plugin/models/plugin";
+import { Plugin, PluginFee } from "@/modules/plugin/models/plugin";
 import {
   PluginPolicy,
   PolicyTransactionHistory,
@@ -41,6 +41,21 @@ const MarketplaceService = {
       return plugin;
     } catch (error) {
       console.error("Error getting plugin:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get pricing by id from the API.
+   * @returns {Promise<Object>} A promise that resolves to the fetched pricing.
+   */
+  getPluginPricing: async (id: string): Promise<PluginFee> => {
+    try {
+      const endpoint = `${getMarketplaceUrl()}/pricings/${id}`;
+      const plugin = await get(endpoint);
+      return plugin;
+    } catch (error) {
+      console.error("Error getting plugin pricing:", error);
       throw error;
     }
   },

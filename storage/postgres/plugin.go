@@ -44,6 +44,7 @@ func (p *PostgresBackend) FindPluginById(ctx context.Context, id string) (types.
 	pluginDto.Metadata = plugin.Metadata
 	pluginDto.ServerEndpoint = plugin.ServerEndpoint
 	pluginDto.Ratings = ratings
+	pluginDto.PricingID = plugin.PricingID
 
 	return pluginDto, nil
 }

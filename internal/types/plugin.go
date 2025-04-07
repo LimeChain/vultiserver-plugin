@@ -27,6 +27,7 @@ type PluginDto struct {
 	Metadata       json.RawMessage   `json:"metadata" validate:"required"`
 	ServerEndpoint string            `json:"server_endpoint" validate:"required"`
 	Ratings        []PluginRatingDto `json:"ratings" validate:"required"`
+	PricingID      string            `json:"pricing_id" validate:"required"`
 }
 
 type PlugisDto struct {

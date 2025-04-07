@@ -6,12 +6,14 @@ import "./PluginDetail.css";
 import { useEffect, useState } from "react";
 import MarketplaceService from "@/modules/marketplace/services/marketplaceService";
 import Toast from "@/modules/core/components/ui/toast/Toast";
-import { Plugin } from "../../models/plugin";
+import { Plugin, PluginFee } from "../../models/plugin";
 import Reviews from "@/modules/review/components/reviews/Reviews";
+import { getPluginFee } from "../../utils/plugin.util";
 
 const PluginDetail = () => {
   const navigate = useNavigate();
   const [plugin, setPlugin] = useState<Plugin | null>(null);
+  const [pluginFee, setPluginFee] = useState<PluginFee | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     error?: string;
@@ -27,6 +29,12 @@ const PluginDetail = () => {
       try {
         const fetchedPlugin = await MarketplaceService.getPlugin(pluginId);
         setPlugin(fetchedPlugin);
+
+        const fetchedPricing = await MarketplaceService.getPluginPricing(
+          fetchedPlugin.pricing_id
+        );
+
+        setPluginFee(fetchedPricing);
       } catch (error: any) {
         console.error("Failed to get plugin:", error.message);
         setToast({
@@ -73,7 +81,7 @@ const PluginDetail = () => {
                   >
                     Install
                   </Button>
-                  <aside>Plugin fee: 0.1% per trade</aside>
+                  {pluginFee && <aside>{getPluginFee(pluginFee)}</aside>}
                 </section>
               </section>
             </section>
