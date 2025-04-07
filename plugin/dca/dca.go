@@ -352,7 +352,6 @@ func (p *DCAPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.Plug
 				Parties:          []string{common.PluginPartyID, common.VerifierPartyID},
 			},
 			Transaction:     hex.EncodeToString(data.RlpTxBytes),
-			PluginID:        policy.PluginID,
 			PolicyID:        policy.ID,
 			TransactionType: data.Type,
 		}

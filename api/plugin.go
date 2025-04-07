@@ -51,11 +51,6 @@ func (s *Server) SignPluginMessages(c echo.Context) error {
 		return fmt.Errorf("failed to get policy from database: %w", err)
 	}
 
-	// Validate policy matches plugin
-	if policy.PluginID != req.PluginID {
-		return fmt.Errorf("policy plugin ID mismatch")
-	}
-
 	// We re-init plugin as verification server doesn't have plugin defined
 	var plg plugin.Plugin
 	plg, err = s.initializePlugin(policy.PluginType)
