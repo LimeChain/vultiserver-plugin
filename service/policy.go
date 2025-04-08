@@ -103,7 +103,7 @@ func (s *PolicyService) UpdatePolicyWithSync(ctx context.Context, policy types.P
 			return fmt.Errorf("failed to update policy: %w", err)
 		}
 
-		if s.scheduler != nil {
+		if s.scheduler != nil && !reflect.ValueOf(s.scheduler).IsNil() {
 			trigger, err := s.scheduler.GetTriggerFromPolicy(policy)
 			if err != nil {
 				return fmt.Errorf("failed to get trigger from policy: %w", err)
@@ -114,7 +114,7 @@ func (s *PolicyService) UpdatePolicyWithSync(ctx context.Context, policy types.P
 			}
 		}
 
-		if s.syncer != nil {
+		if s.syncer != nil && !reflect.ValueOf(s.syncer).IsNil() {
 			if err := s.syncer.UpdatePolicySync(policy); err != nil {
 				return fmt.Errorf("failed to sync update policy: %w", err)
 			}
@@ -133,7 +133,7 @@ func (s *PolicyService) DeletePolicyWithSync(ctx context.Context, policyID, sign
 		if err := s.db.DeletePluginPolicyTx(ctx, tx, policyID); err != nil {
 			return fmt.Errorf("failed to delete policy: %w", err)
 		}
-		if s.syncer != nil {
+		if s.syncer != nil && !reflect.ValueOf(s.syncer).IsNil() {
 			if err := s.syncer.DeletePolicySync(policyID, signature); err != nil {
 				return fmt.Errorf("failed to sync delete policy: %w", err)
 			}

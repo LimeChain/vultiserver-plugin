@@ -701,17 +701,17 @@ func (p *DCAPlugin) completePolicy(ctx context.Context, policy types.PluginPolic
 	}).Info("DCA: All orders completed, no transactions to propose")
 
 	// TODO: Sync a COMPLETED state for the policy with the verifier database.
-	err := p.db.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		policy.Active = false
-		_, err := p.db.UpdatePluginPolicyTx(ctx, tx, policy)
-		if err != nil {
-			return fmt.Errorf("dca: failed to update plugin policy tx: %w", err)
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("dca: failed to update plugin policy tx: %w", err)
-	}
+	//err := p.db.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
+	//	policy.Active = false
+	//	_, err := p.db.UpdatePluginPolicyTx(ctx, tx, policy)
+	//	if err != nil {
+	//		return fmt.Errorf("dca: failed to update plugin policy tx: %w", err)
+	//	}
+	//	return nil
+	//})
+	//if err != nil {
+	//	return fmt.Errorf("dca: failed to update plugin policy tx: %w", err)
+	//}
 
 	return nil
 }
