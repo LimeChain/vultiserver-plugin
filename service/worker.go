@@ -432,7 +432,6 @@ func (s *WorkerService) HandlePluginTransaction(ctx context.Context, t *asynq.Ta
 		// create transaction with PENDING status
 		metadata := map[string]interface{}{
 			"timestamp":        time.Now(),
-			"plugin_id":        signRequest.PluginID,
 			"public_key":       signRequest.KeysignRequest.PublicKey,
 			"transaction_type": signRequest.TransactionType,
 		}
