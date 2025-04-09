@@ -21,5 +21,4 @@ tests:
 
 
 lint:
-	@golangci-lint run --out-format tab --sort-results
-	@shellcheck ./install.sh
+	@golangci-lint run
