@@ -5,9 +5,9 @@ name: Go
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "feat/plugins-verifier-marketplace-develop" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "feat/plugins-verifier-marketplace-develop" ]
 
 jobs:
 
