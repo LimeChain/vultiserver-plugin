@@ -36,7 +36,7 @@ import (
 	"github.com/vultisig/vultisigner/storage/postgres"
 )
 
-type WorkerDatabase interface {
+type WorkerStorage interface {
 	WithTransaction(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error
 	UpdateTriggerStatus(ctx context.Context, policyID string, status types.TimeTriggerStatus) error
 	UpdateTimeTriggerLastExecution(ctx context.Context, policyID string) error
@@ -62,7 +62,7 @@ type WorkerService struct {
 	blockStorage *storage.BlockStorage
 	inspector    Inspector
 	plugin       plugin.Plugin
-	db           WorkerDatabase
+	db           WorkerStorage
 	rpcClient    *ethclient.Client
 	syncer       syncer.PolicySyncer
 	authService  Auth

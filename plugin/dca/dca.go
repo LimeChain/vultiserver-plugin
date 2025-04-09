@@ -54,7 +54,7 @@ type DCAStorage interface {
 }
 
 type DCAPlugin struct {
-	uniswapClient uniswap.ClientInterface
+	uniswapClient uniswap.Client
 	rpcClient     EthClient
 	db            DCAStorage
 	logger        *logrus.Logger
