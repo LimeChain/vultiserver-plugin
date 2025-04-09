@@ -100,8 +100,7 @@ linters-settings:
 
   gomodguard:
     blocked:
-      # List of blocked modules.
-      # Default: []
+
       modules:
         - github.com/golang/protobuf:
             recommendations:

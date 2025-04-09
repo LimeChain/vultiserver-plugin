@@ -96,3 +96,10 @@ jobs:
           cd plugins-ui
           npm install
           npm run test
+
+      - name: Build 
+        run: |
+          cd plugins-ui
+          npm run build
+
+    
