@@ -75,7 +75,7 @@ Create a pricing plan
 ```sh
 curl --location localhost:8080/pricings --request POST \
 --header 'Authorization: Bearer myauthtoken' \
---header 'Content-Type: application/json' \
+--header 'Content-Type: appli  cation/json' \
 --data '{
   "type": "FREE",
   "amount": 0,
