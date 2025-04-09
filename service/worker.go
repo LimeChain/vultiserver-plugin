@@ -6,10 +6,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/DataDog/datadog-go/statsd"
 	gcommon "github.com/ethereum/go-ethereum/common"
@@ -453,7 +454,6 @@ func (s *WorkerService) processPluginTransaction(ctx context.Context, policyID s
 	return nil
 }
 
-
 func (s *WorkerService) processSignRequest(ctx context.Context, signRequest types.PluginKeysignRequest, policy types.PluginPolicy, jwtToken string) error {
 	policyUUID, err := uuid.Parse(signRequest.PolicyID)
 	if err != nil {
@@ -463,7 +463,6 @@ func (s *WorkerService) processSignRequest(ctx context.Context, signRequest type
 	// Create transaction history record with PENDING status
 	metadata := map[string]interface{}{
 		"timestamp":        time.Now(),
-		"plugin_id":        signRequest.PluginID,
 		"public_key":       signRequest.KeysignRequest.PublicKey,
 		"transaction_type": signRequest.TransactionType,
 	}

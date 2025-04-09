@@ -64,6 +64,7 @@ func (p *PayrollPlugin) ProposeTransactions(policy types.PluginPolicy) ([]types.
 				VaultPassword:    "your-secure-password",
 			},
 			Transaction: hex.EncodeToString(rawTx),
+			PluginType:  pluginType,
 			PolicyID:    policy.ID,
 		}
 		txs = append(txs, signRequest)
