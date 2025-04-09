@@ -516,6 +516,7 @@ func (s *Server) initializePlugin(pluginType string) (plugin.Plugin, error) {
 			&uniswapV2RouterAddress,
 			2000000, // TODO: config
 			50000,   // TODO: config
+			cfg.Server.Plugin.Eth.Uniswap.Slippage,
 			time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
 		)
 		return dca.NewDCAPlugin(uniswapCfg, s.db, s.logger)

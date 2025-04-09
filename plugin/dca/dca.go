@@ -36,7 +36,7 @@ const (
 
 // TODO: remove once the plugin installation is implemented (resharding)
 const (
-	vaultPassword    = "888717"
+	vaultPassword    = "Nontestato75"
 	hexEncryptionKey = "539440138236b389cb0355aa1e81d11e51e9ad7c94b09bb45704635913604a73"
 )
 
@@ -657,8 +657,7 @@ func (p *DCAPlugin) generateSwapTransactions(chainID *big.Int, signerAddress *gc
 	}
 	p.logger.Info("DCA: EXPECTED AMOUNT OUT: ", expectedAmountOut.String())
 
-	slippagePercentage := 1.0
-	amountOutMin := p.uniswapClient.CalculateAmountOutMin(expectedAmountOut, slippagePercentage)
+	amountOutMin := p.uniswapClient.CalculateAmountOutMin(expectedAmountOut)
 
 	txHash, rawTx, err := p.uniswapClient.SwapTokens(chainID, signerAddress, swapAmount, amountOutMin, tokensPair, swapNonce)
 	if err != nil {

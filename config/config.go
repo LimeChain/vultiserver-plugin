@@ -22,8 +22,9 @@ type Config struct {
 			Eth  struct {
 				Rpc     string `mapstructure:"rpc" json:"rpc,omitempty"`
 				Uniswap struct {
-					V2Router string `mapstructure:"v2_router" json:"v2_router,omitempty"`
-					Deadline int64  `mapstructure:"deadline" json:"deadline,omitempty"`
+					Slippage float64 `mapstructure:"slippage" json:"slippage,omitempty"`
+					V2Router string  `mapstructure:"v2_router" json:"v2_router,omitempty"`
+					Deadline int64   `mapstructure:"deadline" json:"deadline,omitempty"`
 				} `mapstructure:"uniswap" json:"uniswap,omitempty"`
 			} `mapstructure:"eth" json:"eth,omitempty"`
 		} `mapstructure:"plugin" json:"plugin,omitempty"`

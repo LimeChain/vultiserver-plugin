@@ -102,6 +102,7 @@ func NewServer(
 				&uniswapV2RouterAddress,
 				2000000, // TODO: config
 				50000,   // TODO: config
+				cfg.Server.Plugin.Eth.Uniswap.Slippage,
 				time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
 			)
 			plugin, err = dca.NewDCAPlugin(uniswapCfg, db, logger)
