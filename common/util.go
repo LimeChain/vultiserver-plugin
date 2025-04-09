@@ -23,8 +23,8 @@ import (
 
 // TODO: remove once the plugin installation is implemented (resharding)
 const (
-	PluginPartyID   = "MihailGenchev’s MacBook Pro-F87"
-	VerifierPartyID = "iPhone-E7E"
+	PluginPartyID   = "Rado’s MacBook Pro-FD0"
+	VerifierPartyID = "Server-58253"
 )
 
 const (
