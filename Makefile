@@ -18,3 +18,8 @@ plugin-worker:
 
 tests:
 	@go test -v `go list ./... | grep -v scripts | grep -v chainhelper`
+
+
+lint:
+	@golangci-lint run --out-format tab --sort-results
+	@shellcheck ./install.sh

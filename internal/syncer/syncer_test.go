@@ -71,7 +71,6 @@ func TestCreatePolicySync(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			server := httptest.NewServer(http.HandlerFunc(tc.serverResponse))
 			defer server.Close()
 
