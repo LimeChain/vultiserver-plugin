@@ -3,13 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import ChevronLeft from "@/assets/ChevronLeft.svg?react";
 import logo from "../../../../assets/DCA-image.png"; // todo hardcoded until this image is stored in DB
 import "./PluginDetail.css";
-import LeaveReview from "@/modules/shared/review/LeaveReview";
-import Rating from "@/modules/shared/rating/Rating";
-import ReviewHistory from "@/modules/shared/review/ReviewHistory";
 import { useEffect, useState } from "react";
 import MarketplaceService from "@/modules/marketplace/services/marketplaceService";
 import Toast from "@/modules/core/components/ui/toast/Toast";
 import { Plugin } from "../../models/plugin";
+import Reviews from "@/modules/review/components/reviews/Reviews";
 
 const PluginDetail = () => {
   const navigate = useNavigate();
@@ -80,17 +78,7 @@ const PluginDetail = () => {
               </section>
             </section>
 
-            <section>
-              <h3 className="review-rating-header">Reviews and Ratings</h3>
-              <div className="review-rating">
-                <LeaveReview />
-                <Rating />
-              </div>
-            </section>
-
-            <section>
-              <ReviewHistory />
-            </section>
+            <Reviews plugin={plugin} />
           </>
         )}
       </div>

@@ -52,6 +52,7 @@ type Server struct {
 	rpcClient     *ethclient.Client
 	scheduler     *scheduler.SchedulerService
 	policyService service.Policy
+	pluginService service.Plugin
 	authService   *service.AuthService
 	syncer        syncer.PolicySyncer
 	plugin        plugin.Plugin
@@ -136,6 +137,11 @@ func NewServer(
 		logger.Fatalf("Failed to initialize policy service: %v", err)
 	}
 
+	pluginService, err := service.NewPluginService(db, logger.WithField("service", "plugin").Logger)
+	if err != nil {
+		logger.Fatalf("Failed to initialize plugin service: %v", err)
+	}
+
 	authService := service.NewAuthService(jwtSecret)
 
 	return &Server{
@@ -153,6 +159,7 @@ func NewServer(
 		logger:        logger,
 		syncer:        syncerService,
 		policyService: policyService,
+		pluginService: pluginService,
 		authService:   authService,
 	}
 }
@@ -228,6 +235,9 @@ func (s *Server) StartServer() error {
 		pluginsGroup.POST("", s.CreatePlugin, s.userAuthMiddleware)
 		pluginsGroup.PATCH("/:pluginId", s.UpdatePlugin, s.userAuthMiddleware)
 		pluginsGroup.DELETE("/:pluginId", s.DeletePlugin, s.userAuthMiddleware)
+
+		pluginsGroup.GET("/:pluginId/reviews", s.GetReviews)
+		pluginsGroup.POST("/:pluginId/reviews", s.CreateReview, s.AuthMiddleware)
 
 		pricingsGroup := e.Group("/pricings")
 		pricingsGroup.GET("/:pricingId", s.GetPricing)

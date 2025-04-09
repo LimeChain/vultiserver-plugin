@@ -17,6 +17,18 @@ type Plugin struct {
 	PricingID      string          `json:"pricing_id" validate:"required"`
 }
 
+type PluginDto struct {
+	ID             string            `json:"id" validate:"required"`
+	CreatedAt      time.Time         `json:"created_at"`
+	UpdatedAt      time.Time         `json:"updated_at"`
+	Type           string            `json:"type" validate:"required"`
+	Title          string            `json:"title" validate:"required"`
+	Description    string            `json:"description" validate:"required"`
+	Metadata       json.RawMessage   `json:"metadata" validate:"required"`
+	ServerEndpoint string            `json:"server_endpoint" validate:"required"`
+	Ratings        []PluginRatingDto `json:"ratings,omitempty"`
+}
+
 type PlugisDto struct {
 	Plugins    []Plugin `json:"plugins"`
 	TotalCount int      `json:"total_count"`

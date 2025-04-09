@@ -6,4 +6,10 @@ export type Plugin = {
   metadata: {};
   server_endpoint: string;
   pricing_id: string;
+  ratings: PluginRatings[];
+};
+
+export type PluginRatings = {
+  rating: number;
+  count: number;
 };
