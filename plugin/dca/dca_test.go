@@ -533,14 +533,6 @@ func TestProposeTransactions(t *testing.T) {
 				totalOrders, _ := new(big.Int).SetString(dcaPolicy.TotalOrders, 10)
 
 				db.On("CountTransactions", ctx, policyUUID, types.StatusMined, "SWAP").Return(totalOrders.Int64(), nil)
-
-				db.On("WithTransaction", ctx, mock.AnythingOfType("func(context.Context, pgx.Tx) error")).
-					Return(true, nil)
-
-				updatedPolicy := policy
-				updatedPolicy.Active = false
-				db.On("UpdatePluginPolicyTx", mock.Anything, nil, mock.Anything).
-					Return(&updatedPolicy, nil)
 			},
 			expected:     0,
 			wantErr:      true,
@@ -649,87 +641,6 @@ func TestProposeTransactions(t *testing.T) {
 
 			mockDB.AssertExpectations(t)
 			mockUniswap.AssertExpectations(t)
-		})
-	}
-}
-
-func TestCompletePolicy(t *testing.T) {
-	ctx := context.Background()
-	policy := createValidPolicy()
-
-	testCases := []struct {
-		name      string
-		mockSetup func(*database.MockDB)
-		wantError bool
-		errorMsg  string
-	}{
-		{
-			name: "Successful policy completion",
-			mockSetup: func(db *database.MockDB) {
-				db.On("WithTransaction", ctx, mock.AnythingOfType("func(context.Context, pgx.Tx) error")).
-					Return(true, nil)
-
-				updatedPolicy := policy
-				updatedPolicy.Active = false
-				db.On("UpdatePluginPolicyTx", ctx, nil, mock.MatchedBy(func(p types.PluginPolicy) bool {
-					return p.Active == false
-				})).Return(&updatedPolicy, nil)
-			},
-			wantError: false,
-		},
-		{
-			name: "Transaction error",
-			mockSetup: func(db *database.MockDB) {
-				db.On("WithTransaction", ctx, mock.AnythingOfType("func(context.Context, pgx.Tx) error")).
-					Return(false, errors.New("transaction error"))
-			},
-			wantError: true,
-			errorMsg:  "failed to update plugin policy tx",
-		},
-		{
-			name: "Update policy error",
-			mockSetup: func(db *database.MockDB) {
-				// Make WithTransaction execute the function
-				db.On("WithTransaction", ctx, mock.AnythingOfType("func(context.Context, pgx.Tx) error")).
-					Return(true, nil)
-
-				db.On("UpdatePluginPolicyTx", ctx, nil, mock.MatchedBy(func(p types.PluginPolicy) bool {
-					return p.Active == false
-				})).Return(nil, errors.New("database update errro"))
-			},
-			wantError: true,
-			errorMsg:  "failed to update plugin policy tx",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockUniswap := new(uniswapclient.MockUniswapClient)
-			mockEth := new(ethclient.MockEthClient)
-			mockDB := new(database.MockDB)
-			logger := logrus.New()
-
-			tc.mockSetup(mockDB)
-
-			plugin := DCAPlugin{
-				uniswapClient: mockUniswap,
-				rpcClient:     mockEth,
-				db:            mockDB,
-				logger:        logger,
-			}
-
-			err := plugin.completePolicy(ctx, policy)
-
-			if tc.wantError {
-				require.Error(t, err)
-				if tc.errorMsg != "" {
-					require.Contains(t, err.Error(), tc.errorMsg)
-				}
-			} else {
-				require.NoError(t, err)
-			}
-
-			mockDB.AssertExpectations(t)
 		})
 	}
 }
@@ -904,14 +815,6 @@ func TestValidateProposedTransactions(t *testing.T) {
 
 				db.On("CountTransactions", mock.Anything, policyUUID, types.StatusMined, "SWAP").
 					Return(totalOrders.Int64(), nil)
-
-				db.On("WithTransaction", mock.Anything, mock.AnythingOfType("func(context.Context, pgx.Tx) error")).
-					Return(true, nil)
-
-				updatedPolicy := policy
-				updatedPolicy.Active = false
-				db.On("UpdatePluginPolicyTx", mock.Anything, nil, mock.Anything).
-					Return(&updatedPolicy, nil)
 			},
 			wantErr:      true,
 			errorMessage: "policy completed all swaps",

@@ -446,7 +446,8 @@ func (s *WorkerService) processPluginTransaction(ctx context.Context, policyID s
 
 	for _, signRequest := range signRequests {
 		if err := s.processSignRequest(ctx, signRequest, policy, jwtToken); err != nil {
-			return err
+			s.logger.Errorf("Processing sign request failed: %v", err)
+			return fmt.Errorf("processing sign request failed: %w", err)
 		}
 	}
 	return nil
@@ -455,7 +456,6 @@ func (s *WorkerService) processPluginTransaction(ctx context.Context, policyID s
 func (s *WorkerService) processSignRequest(ctx context.Context, signRequest types.PluginKeysignRequest, policy types.PluginPolicy, jwtToken string) error {
 	policyUUID, err := uuid.Parse(signRequest.PolicyID)
 	if err != nil {
-		s.logger.Errorf("Failed to parse policy UUID: %v", err)
 		return fmt.Errorf("failed to parse policy UUID: %w", err)
 	}
 
@@ -500,7 +500,6 @@ func (s *WorkerService) executeSigningProcess(
 	signRequest.KeysignRequest.Parties = []string{common.PluginPartyID, common.VerifierPartyID}
 	buf, err := json.Marshal(signRequest)
 	if err != nil {
-		s.logger.Errorf("Failed to marshal signRequest: %v", err)
 		return fmt.Errorf("failed to marshal signRequest: %w", err)
 	}
 
@@ -513,8 +512,7 @@ func (s *WorkerService) executeSigningProcess(
 		asynq.Queue(tasks.QUEUE_NAME),
 	)
 	if err != nil {
-		s.logger.Errorf("Failed to enqueue signing task: %v", err)
-		return fmt.Errorf("failed to enqueue signing task: %v", err)
+		return fmt.Errorf("failed to enqueue signing task: %w", err)
 	}
 
 	s.logger.Infof("Enqueued signing task: %s", ti.ID)
@@ -538,7 +536,7 @@ func (s *WorkerService) executeSigningProcess(
 	newTx.Status = types.StatusSigned
 	newTx.Metadata = metadata
 	if err := s.upsertAndSyncTransaction(ctx, syncer.UpdateAction, &newTx, jwtToken); err != nil {
-		return fmt.Errorf("upsertAndSyncTransaction failed: %v", err)
+		return fmt.Errorf("upsertAndSyncTransaction failed: %w", err)
 	}
 	return s.completeSigningProcess(ctx, result, signRequest, metadata, newTx, jwtToken, policy)
 
@@ -547,7 +545,6 @@ func (s *WorkerService) executeSigningProcess(
 func (s *WorkerService) completeSigningProcess(ctx context.Context, result []byte, signRequest types.PluginKeysignRequest, metadata map[string]interface{}, newTx types.TransactionHistory, jwtToken string, policy types.PluginPolicy) error {
 	var signatures map[string]tss.KeysignResponse
 	if err := json.Unmarshal(result, &signatures); err != nil {
-		s.logger.Errorf("Failed to unmarshal signatures: %v", err)
 		return fmt.Errorf("failed to unmarshal signatures: %w", err)
 	}
 
@@ -638,6 +635,7 @@ func (s *WorkerService) initiateTxSignWithVerifier(ctx context.Context, signRequ
 		s.logger.Errorf("Failed to read response: %v", err)
 		return err
 	}
+
 	if signResp.StatusCode != http.StatusOK {
 		metadata["error"] = string(respBody)
 		newTx.Status = types.StatusSigningFailed

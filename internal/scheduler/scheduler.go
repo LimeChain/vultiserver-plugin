@@ -116,7 +116,9 @@ func (s *SchedulerService) checkAndEnqueueTasks() error {
 
 	for _, trigger := range triggers {
 		if err := s.processTrigger(ctx, trigger); err != nil {
-			s.logger.Errorf("Failed to process trigger: %v", err)
+			if !errors.Is(err, ErrTriggerNotReady) {
+				s.logger.Errorf("Failed to process trigger: %v", err)
+			}
 			continue
 		}
 	}
