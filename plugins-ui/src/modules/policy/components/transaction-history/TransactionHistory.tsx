@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { usePolicies } from "../../context/PolicyProvider";
 import { PolicyTransactionHistory } from "../../models/policy";
 import "./TransactionHistory.css";
-import Toast from "@/modules/core/components/ui/toast/Toast";
+import { publish } from "@/utils/eventBus";
 
 type TransactionHistoryProps = {
   policyId: string;
@@ -30,24 +30,19 @@ const TransactionHistory = ({ policyId }: TransactionHistoryProps) => {
     []
   );
 
-  const [toast, setToast] = useState<{
-    message: string;
-    error?: string;
-    type: "success" | "warning" | "error";
-  } | null>(null);
-
   useEffect(() => {
     const fetchPolicyHistory = async (): Promise<void> => {
       try {
         const fetchedHistory = await getPolicyHistory(policyId);
         setHistoryData(fetchedHistory);
-      } catch (error: any) {
-        console.error("Failed to get policy history:", error.message);
-        setToast({
-          message: error.message || "Failed to get policy history",
-          error: error.error,
-          type: "error",
-        });
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error("Failed to get policy history:", error.message);
+          publish("onToast", {
+            message: error.message || "Failed to get policy history",
+            type: "error",
+          });
+        }
       }
     };
 
@@ -75,13 +70,6 @@ const TransactionHistory = ({ policyId }: TransactionHistoryProps) => {
           </li>
         )}
       </ul>
-      {toast && (
-        <Toast
-          title={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
     </div>
   );
 };

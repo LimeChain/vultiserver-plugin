@@ -3,9 +3,9 @@ import "./Marketplace.css";
 import MarketplaceFilters from "../marketplace-filters/MarketplaceFilters";
 import { useEffect, useState } from "react";
 import { PluginMap, ViewFilter } from "../../models/marketplace";
-import Toast from "@/modules/core/components/ui/toast/Toast";
 import MarketplaceService from "../../services/marketplaceService";
 import Pagination from "@/modules/core/components/ui/pagination/Pagination";
+import { publish } from "@/utils/eventBus";
 
 const getSavedView = (): string => {
   return localStorage.getItem("view") || "grid";
@@ -23,12 +23,6 @@ const Marketplace = () => {
     localStorage.setItem("view", view);
     setView(view);
   };
-
-  const [toast, setToast] = useState<{
-    message: string;
-    error?: string;
-    type: "success" | "error";
-  } | null>(null);
 
   const [pluginsMap, setPlugins] = useState<PluginMap | null>(null);
 
@@ -48,13 +42,14 @@ const Marketplace = () => {
         ) {
           setCurrentPage(1);
         }
-      } catch (error: any) {
-        console.error("Failed to get plugins:", error.message);
-        setToast({
-          message: "Failed to get plugins",
-          error: error.error,
-          type: "error",
-        });
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error("Failed to get plugins:", error.message);
+          publish("onToast", {
+            type: "error",
+            message: "Failed to get plugins",
+          });
+        }
       }
     };
 
@@ -98,14 +93,6 @@ const Marketplace = () => {
             />
           )}
         </div>
-      )}
-
-      {toast && (
-        <Toast
-          title={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
       )}
     </>
   );
