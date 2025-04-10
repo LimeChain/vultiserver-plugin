@@ -34,4 +34,6 @@
     --alert-warning-color: #FFC25C;
     --alert-error-color: #FF5C5C;
 
+    --largest-z-index: 99999;
+
 }
