@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Wallet from "@/modules/shared/wallet/Wallet";
 import VulticonnectWalletService from "@/modules/shared/wallet/vulticonnectWalletService";
 import MarketplaceService from "@/modules/marketplace/services/marketplaceService";
+import { mockEventBus } from "@tests-utils/global-mocks";
 
 describe("Wallet", () => {
   afterEach(() => {
@@ -97,7 +98,6 @@ describe("Wallet", () => {
 
   it("should alert when trying to connect to unsupported chain", async () => {
     localStorage.setItem("chain", "thorchain");
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
 
     render(<Wallet />);
 
@@ -105,11 +105,10 @@ describe("Wallet", () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(alertSpy).toBeCalledWith(
-        "Chain thorchain is currently not supported."
-      );
+      expect(mockEventBus.publish).toBeCalledWith("onToast", {
+        type: "error",
+        message: "Chain thorchain is currently not supported.",
+      });
     });
-
-    alertSpy.mockRestore();
   });
 });

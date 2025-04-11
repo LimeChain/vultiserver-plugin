@@ -1,5 +1,6 @@
 import VulticonnectWalletService from "@/modules/shared/wallet/vulticonnectWalletService";
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { mockEventBus } from "../utils/global-mocks";
 
 describe("VulticonnectWalletService", () => {
   afterEach(() => {
@@ -8,14 +9,14 @@ describe("VulticonnectWalletService", () => {
 
   describe("connectToVultiConnect", () => {
     it("should alert if no provider is found", async () => {
-      vi.spyOn(window, "alert").mockImplementation(() => {});
       delete (window as any).vultisig;
 
       await VulticonnectWalletService.connectToVultiConnect();
 
-      expect(window.alert).toHaveBeenCalledWith(
-        "No ethereum provider found. Please install VultiConnect."
-      );
+      expect(mockEventBus.publish).toBeCalledWith("onToast", {
+        message: "No ethereum provider found. Please install VultiConnect.",
+        type: "error",
+      });
     });
 
     it("should return accounts if provider exists", async () => {
@@ -58,14 +59,13 @@ describe("VulticonnectWalletService", () => {
 
   describe("getConnectedEthAccounts", () => {
     it("should alert if no provider is found", async () => {
-      vi.spyOn(window, "alert").mockImplementation(() => {});
       delete (window as any).vultisig;
 
       await VulticonnectWalletService.getConnectedEthAccounts();
-
-      expect(window.alert).toHaveBeenCalledWith(
-        "No ethereum provider found. Please install VultiConnect."
-      );
+      expect(mockEventBus.publish).toBeCalledWith("onToast", {
+        message: "No ethereum provider found. Please install VultiConnect.",
+        type: "error",
+      });
     });
 
     it("should return accounts if provider exists", async () => {
@@ -109,17 +109,16 @@ describe("VulticonnectWalletService", () => {
 
   describe("signCustomMessage", () => {
     it("should alert if no provider is found", async () => {
-      vi.spyOn(window, "alert").mockImplementation(() => {});
       delete (window as any).vultisig;
 
       await VulticonnectWalletService.signCustomMessage(
         "hexMessage",
         "walletAddress"
       );
-
-      expect(window.alert).toHaveBeenCalledWith(
-        "No ethereum provider found. Please install VultiConnect."
-      );
+      expect(mockEventBus.publish).toBeCalledWith("onToast", {
+        message: "No ethereum provider found. Please install VultiConnect.",
+        type: "error",
+      });
     });
 
     it("should return signature if provider exists", async () => {
