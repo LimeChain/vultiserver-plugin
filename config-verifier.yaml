@@ -9,7 +9,7 @@ server:
   vaults_file_path: /tmp/verifier/vaults
   mode: verifier
   plugin:
-    type: dca
+    type: payroll
     eth:
       rpc: http://127.0.0.1:8545
       uniswap:
