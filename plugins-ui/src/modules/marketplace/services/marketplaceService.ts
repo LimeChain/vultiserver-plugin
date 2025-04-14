@@ -77,18 +77,20 @@ const MarketplaceService = {
       const newPolicy = await get(endpoint, {
         headers: {
           plugin_type: pluginType,
-          public_key: getPublicKey(),
+          public_key: `${getPublicKey()}`,
           Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
       });
       return newPolicy;
-    } catch (error: any) {
-      if (error.message === "Unauthorized") {
-        localStorage.removeItem("authToken");
-        // Dispatch custom event to notify other components
-        window.dispatchEvent(new Event("storage"));
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === "Unauthorized") {
+          localStorage.removeItem("authToken");
+          // Dispatch custom event to notify other components
+          window.dispatchEvent(new Event("storage"));
+        }
+        console.error("Error getting policies:", error);
       }
-      console.error("Error getting policies:", error);
       throw error;
     }
   },
@@ -104,7 +106,7 @@ const MarketplaceService = {
       const endpoint = `${getMarketplaceUrl()}/plugins/policies/${policyId}/history`;
       const history = await get(endpoint, {
         headers: {
-          public_key: getPublicKey(),
+          public_key: `${getPublicKey()}`,
           Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
       });

@@ -30,6 +30,7 @@ const MarketplaceFilters = ({
         size="medium"
         className={`view-filter ${view === "grid" ? "active" : ""}`}
         onClick={() => changeView("grid")}
+        data-testid="marketplace-filters-grid"
       >
         <Grid width="20px" height="20px" color="#F0F4FC" />
       </Button>
@@ -40,6 +41,7 @@ const MarketplaceFilters = ({
         size="medium"
         className={`view-filter ${view === "list" ? "active" : ""}`}
         onClick={() => changeView("list")}
+        data-testid="marketplace-filters-list"
       >
         <List width="20px" height="20px" color="#F0F4FC" />
       </Button>

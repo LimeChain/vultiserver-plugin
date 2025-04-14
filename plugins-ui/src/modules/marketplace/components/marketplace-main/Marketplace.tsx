@@ -3,7 +3,7 @@ import "./Marketplace.css";
 import MarketplaceFilters from "../marketplace-filters/MarketplaceFilters";
 import { useEffect, useState } from "react";
 import { PluginMap, ViewFilter } from "../../models/marketplace";
-import MarketplaceService from "../../services/marketplaceService";
+import MarketplaceService from "@/modules/marketplace/services/marketplaceService";
 import Pagination from "@/modules/core/components/ui/pagination/Pagination";
 import { publish } from "@/utils/eventBus";
 
@@ -63,7 +63,7 @@ const Marketplace = () => {
   return (
     <>
       {pluginsMap && (
-        <div className="only-section">
+        <div className="only-section" data-testid="marketplace-wrapper">
           <h2>Plugins Marketplace</h2>
           <MarketplaceFilters
             viewFilter={view as ViewFilter}
@@ -74,6 +74,7 @@ const Marketplace = () => {
               <div
                 className={view === "list" ? "list-card" : ""}
                 key={plugin.id}
+                data-testid="marketplace-plugin-card"
               >
                 <PluginCard
                   uiStyle={view as ViewFilter}

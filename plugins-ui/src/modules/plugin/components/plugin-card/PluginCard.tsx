@@ -19,7 +19,7 @@ const PluginCard = ({ id, uiStyle, title, description }: PluginCardProps) => {
   const navigate = useNavigate();
 
   return (
-    <div className={`plugin ${uiStyle}`}>
+    <div className={`plugin ${uiStyle}`} data-testid="plugin-card-wrapper">
       <div className={uiStyle === "grid" ? "" : "info-group"}>
         <img src={logo} alt={title} />
 
