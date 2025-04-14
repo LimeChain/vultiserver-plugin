@@ -5,7 +5,7 @@ import "./Review.css";
 const ReviewHistory = () => {
   const reviewHistory = [1, 2, 3, 4, 5];
   return (
-    <section className="review-history">
+    <section className="review-history" data-testid="review-history-wrapper">
       {reviewHistory &&
         reviewHistory.map((r) => (
           <Review

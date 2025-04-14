@@ -5,7 +5,7 @@ const Rating = () => {
   const ratings = [5, 4, 3, 2, 1];
 
   return (
-    <section className="rating">
+    <section className="rating" data-testid="rating-wrapper">
       <div className="rating-chart">
         {ratings &&
           ratings.map((r) => (

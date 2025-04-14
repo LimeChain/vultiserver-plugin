@@ -21,11 +21,13 @@ const PluginCard = ({ id, uiStyle, title, description }: PluginCardProps) => {
   return (
     <div className={`plugin ${uiStyle}`} data-testid="plugin-card-wrapper">
       <div className={uiStyle === "grid" ? "" : "info-group"}>
-        <img src={logo} alt={title} />
+        <img data-testid="plugin-card-logo" src={logo} alt={title} />
 
         <div className="plugin-info">
-          <h3>{title}</h3>
-          <p>{truncateText(description)}</p>
+          <h3 data-testid="plugin-card-title">{title}</h3>
+          <p data-testid="plugin-card-description">
+            {truncateText(description)}
+          </p>
         </div>
       </div>
 
@@ -35,6 +37,7 @@ const PluginCard = ({ id, uiStyle, title, description }: PluginCardProps) => {
         type="button"
         styleType="primary"
         onClick={() => navigate(`/plugins/${id}`)}
+        data-testid="plugin-card-details-btn"
       >
         See details
       </Button>
