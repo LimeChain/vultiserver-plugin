@@ -106,7 +106,7 @@ func NewServer(
 				cfg.Server.Plugin.Eth.Uniswap.Slippage,
 				time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
 			)
-			plugin, err = dca.NewDCAPlugin(uniswapCfg, db, logger)
+			plugin, err = dca.NewDCAPlugin(uniswapCfg, db, syncerService, logger)
 			if err != nil {
 				logger.Fatal("fail to initialize DCA plugin: ", err)
 			}

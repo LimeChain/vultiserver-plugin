@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/vultisig/vultisigner/common"
 	"github.com/vultisig/vultisigner/config"
 	"github.com/vultisig/vultisigner/internal/sigutil"
+	"github.com/vultisig/vultisigner/internal/syncer"
 	"github.com/vultisig/vultisigner/internal/types"
 	"github.com/vultisig/vultisigner/pkg/uniswap"
 )
@@ -59,6 +61,7 @@ type DCAPlugin struct {
 	uniswapClient uniswap.Client
 	rpcClient     EthClient
 	db            DCAStorage
+	syncer        syncer.PolicySyncer
 	logger        *logrus.Logger
 	waitMined     func(ctx context.Context, backend bind.DeployBackend, tx *gtypes.Transaction) (*gtypes.Receipt, error)
 	signLegacyTx  func(keysignResponse tss.KeysignResponse, rawTx string, chainID *big.Int) (*gtypes.Transaction, *gcommon.Address, error)
@@ -70,7 +73,7 @@ type RawTxData struct {
 	Type       string
 }
 
-func NewDCAPlugin(uniswapCfg *uniswap.Config, db DCAStorage, logger *logrus.Logger) (*DCAPlugin, error) {
+func NewDCAPlugin(uniswapCfg *uniswap.Config, db DCAStorage, syncer syncer.PolicySyncer, logger *logrus.Logger) (*DCAPlugin, error) {
 	pluginConfig, err := config.ReadConfig("config-plugin")
 	if err != nil {
 		return nil, fmt.Errorf("fail to read plugin config: %w", err)
@@ -90,6 +93,7 @@ func NewDCAPlugin(uniswapCfg *uniswap.Config, db DCAStorage, logger *logrus.Logg
 		uniswapClient: uniswapClient,
 		rpcClient:     rpcClient,
 		db:            db,
+		syncer:        syncer,
 		logger:        logger,
 		waitMined:     bind.WaitMined,
 		signLegacyTx:  sigutil.SignLegacyTx,
@@ -428,7 +432,7 @@ func (p *DCAPlugin) ValidateProposedTransactions(policy types.PluginPolicy, txs 
 	if err != nil {
 		return fmt.Errorf("fail to get completed swaps: %w", err)
 	}
-	// TODO: Change this to make the policy to status COMPLETED if: completed swaps == total orders.
+
 	if completedSwaps >= totalOrders.Int64() {
 		if err := p.completePolicy(context.Background(), policy); err != nil {
 			return fmt.Errorf("fail to complete policy: %w", err)
@@ -701,18 +705,25 @@ func (p *DCAPlugin) completePolicy(ctx context.Context, policy types.PluginPolic
 		"policy_id": policy.ID,
 	}).Info("DCA: All orders completed, no transactions to propose")
 
-	// TODO: Sync a COMPLETED state for the policy with the verifier database.
-	//err := p.db.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-	//	policy.Active = false
-	//	_, err := p.db.UpdatePluginPolicyTx(ctx, tx, policy)
-	//	if err != nil {
-	//		return fmt.Errorf("dca: failed to update plugin policy tx: %w", err)
-	//	}
-	//	return nil
-	//})
-	//if err != nil {
-	//	return fmt.Errorf("dca: failed to update plugin policy tx: %w", err)
-	//}
+	err := p.db.WithTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		policy.Progress = "DONE"
+
+		_, err := p.db.UpdatePluginPolicyTx(ctx, tx, policy)
+		if err != nil {
+			return fmt.Errorf("dca: failed to update plugin policy tx: %w", err)
+		}
+
+		if p.syncer != nil && !reflect.ValueOf(p.syncer).IsNil() {
+			if err := p.syncer.UpdatePolicySync(policy); err != nil {
+				return fmt.Errorf("failed to sync update policy: %w", err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("dca: failed to update plugin policy tx: %w", err)
+	}
 
 	return nil
 }
