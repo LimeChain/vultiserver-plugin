@@ -145,24 +145,22 @@ func (p *PostgresBackend) UpdatePluginPolicyTx(ctx context.Context, dbTx pgx.Tx,
 		return nil, fmt.Errorf("failed to marshal policy: %w", err)
 	}
 
-	var (
-		setClauses = []string{
-			"public_key = $2",
-			"plugin_type = $3",
-			"signature = $4",
-			"active = $5",
-			"policy = $6",
-		}
-		args = []interface{}{
-			policy.ID,
-			policy.PublicKey,
-			policy.PluginType,
-			policy.Signature,
-			policy.Active,
-			policyJSON,
-		}
-		returningFields = "id, public_key, plugin_version, policy_version, plugin_type, signature, active, policy, progress"
-	)
+	setClauses := []string{
+		"public_key = $2",
+		"plugin_type = $3",
+		"signature = $4",
+		"active = $5",
+		"policy = $6",
+	}
+	args := []interface{}{
+		policy.ID,
+		policy.PublicKey,
+		policy.PluginType,
+		policy.Signature,
+		policy.Active,
+		policyJSON,
+	}
+	returningFields := "id, public_key, plugin_version, policy_version, plugin_type, signature, active, policy, progress"
 
 	if policy.Progress != "" {
 		setClauses = append(setClauses, fmt.Sprintf("progress = $%d", len(args)+1))
