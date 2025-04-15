@@ -104,7 +104,7 @@ func NewWorker(cfg config.Config, verifierPort int64, queueClient *asynq.Client,
 				cfg.Server.Plugin.Eth.Uniswap.Slippage,
 				time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
 			)
-			plugin, err = dca.NewDCAPlugin(uniswapCfg, db, logger)
+			plugin, err = dca.NewDCAPlugin(uniswapCfg, db, syncer, logger)
 			if err != nil {
 				return nil, fmt.Errorf("fail to initialize DCA plugin: %w", err)
 			}

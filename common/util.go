@@ -8,8 +8,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/eager7/dogd/btcec"
@@ -275,4 +277,61 @@ func GetSortingCondition(sort string, allowedColumns map[string]bool) (string, s
 	}
 
 	return orderBy, orderDirection
+}
+
+func sortMapRecursively(input map[string]interface{}) map[string]interface{} {
+	sorted := make(map[string]interface{})
+	keys := make([]string, 0, len(input))
+
+	// Collect and sort the keys
+	for k := range input {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// Recursively sort nested maps
+	for _, k := range keys {
+		switch val := input[k].(type) {
+		case map[string]interface{}:
+			sorted[k] = sortMapRecursively(val)
+		case []interface{}:
+			sorted[k] = sortSliceRecursively(val)
+		default:
+			sorted[k] = val
+		}
+	}
+
+	return sorted
+}
+
+func sortSliceRecursively(input []interface{}) []interface{} {
+	for i, v := range input {
+		switch val := v.(type) {
+		case map[string]interface{}:
+			input[i] = sortMapRecursively(val)
+		case []interface{}:
+			input[i] = sortSliceRecursively(val)
+		}
+	}
+	return input
+}
+
+func ToSortedJSON(v interface{}) ([]byte, error) {
+	rawJSON, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	var asMap map[string]interface{}
+	if err := json.Unmarshal(rawJSON, &asMap); err != nil {
+		return nil, err
+	}
+
+	sorted := sortMapRecursively(asMap)
+	result, err := json.Marshal(sorted)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

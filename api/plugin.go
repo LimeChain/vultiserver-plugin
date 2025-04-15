@@ -519,7 +519,7 @@ func (s *Server) initializePlugin(pluginType string) (plugin.Plugin, error) {
 			cfg.Server.Plugin.Eth.Uniswap.Slippage,
 			time.Duration(cfg.Server.Plugin.Eth.Uniswap.Deadline)*time.Minute,
 		)
-		return dca.NewDCAPlugin(uniswapCfg, s.db, s.logger)
+		return dca.NewDCAPlugin(uniswapCfg, s.db, s.syncer, s.logger)
 	default:
 		return nil, fmt.Errorf("unknown plugin type: %s", pluginType)
 	}
@@ -877,10 +877,12 @@ func policyToMessageHex(policy types.PluginPolicy, isUpdate bool) (string, error
 	if !isUpdate {
 		policy.ID = ""
 	}
-	// signature is not part of the message that is signed
-	policy.Signature = ""
 
-	serializedPolicy, err := json.Marshal(policy)
+	// signature & progress are not part of the message that is signed
+	policy.Signature = ""
+	policy.Progress = ""
+
+	serializedPolicy, err := common.ToSortedJSON(policy)
 	if err != nil {
 		return "", fmt.Errorf("failed to serialize policy")
 	}
