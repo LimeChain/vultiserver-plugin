@@ -26,7 +26,11 @@ const SelectBox = ({
     setIsOpen(false);
   };
   return (
-    <div style={style} className="custom-dropdown">
+    <div
+      style={style}
+      className="custom-dropdown"
+      data-testid="select-box-wrapper"
+    >
       <div
         className="dropdown-toggle"
         onClick={() => setIsOpen(!isOpen)}

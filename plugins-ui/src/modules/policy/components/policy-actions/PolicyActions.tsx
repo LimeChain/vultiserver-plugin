@@ -23,15 +23,14 @@ const PolicyActions = ({ policyId }: PolicyActionsProps) => {
     policyMap.get(policyId)?.active
   );
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     const policy = policyMap.get(policyId);
     if (policy) {
       policy.active = !policyIsActive;
-      updatePolicy(policy).then((updated: boolean) => {
-        if (updated) {
-          setPolicyIsActive(policy.active);
-        }
-      });
+      const result = await updatePolicy(policy);
+      if (result) {
+        setPolicyIsActive(policy.active);
+      }
     }
   };
 
@@ -47,6 +46,7 @@ const PolicyActions = ({ policyId }: PolicyActionsProps) => {
           size="small"
           style={{ color: "#DA2E2E", padding: "5px", margin: "0 5px" }}
           onClick={handleUpdate}
+          data-testid="policy-actions-update-btn"
         >
           {policyIsActive && (
             <PauseIcon width="20px" height="20px" color="#F0F4FC" />
@@ -62,6 +62,7 @@ const PolicyActions = ({ policyId }: PolicyActionsProps) => {
           size="small"
           style={{ color: "#DA2E2E", padding: "5px", margin: "0 5px" }}
           onClick={() => setEditModalId(policyId)}
+          data-testid="policy-actions-edit-btn"
         >
           <PenIcon width="20px" height="20px" color="#F0F4FC" />
         </Button>
@@ -72,6 +73,7 @@ const PolicyActions = ({ policyId }: PolicyActionsProps) => {
           size="small"
           style={{ color: "#DA2E2E", padding: "5px", margin: "0 5px" }}
           onClick={() => setTransactionHistoryModalId(policyId)}
+          data-testid="policy-actions-history-btn"
         >
           <BookIcon width="20px" height="20px" color="#F0F4FC" />
         </Button>
@@ -82,6 +84,7 @@ const PolicyActions = ({ policyId }: PolicyActionsProps) => {
           size="small"
           style={{ color: "#DA2E2E", padding: "5px", margin: "0 5px" }}
           onClick={() => removePolicy(policyId)}
+          data-testid="policy-actions-delete-btn"
         >
           <TrashIcon width="20px" height="20px" color="#FF5C5C" />
         </Button>

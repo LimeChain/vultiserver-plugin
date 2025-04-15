@@ -50,7 +50,7 @@ const TransactionHistory = ({ policyId }: TransactionHistoryProps) => {
   }, []);
 
   return (
-    <div className="history-panel">
+    <div className="history-panel" data-testid="transaction-history-wrapper">
       <h2>Transaction History</h2>
       <ul>
         {historyData &&

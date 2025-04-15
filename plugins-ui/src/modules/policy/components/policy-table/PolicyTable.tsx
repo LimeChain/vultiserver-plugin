@@ -100,7 +100,7 @@ const PolicyTable = () => {
   if (columns.length === 0) return;
 
   return (
-    <div>
+    <div data-testid="policy-table-wrapper">
       <PolicyFilters onFiltersChange={setColumnFilters} />
 
       {policySchemaMap.has(pluginType) && (

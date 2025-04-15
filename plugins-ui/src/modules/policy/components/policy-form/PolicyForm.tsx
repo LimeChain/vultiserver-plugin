@@ -4,7 +4,7 @@ import "./PolicyForm.css";
 import { generatePolicy } from "../../utils/policy.util";
 import { PluginPolicy, PolicySchema } from "../../models/policy";
 import { useEffect, useState } from "react";
-import { usePolicies } from "../../context/PolicyProvider";
+import { usePolicies } from "@/modules/policy/context/PolicyProvider";
 import { TitleFieldTemplate } from "../policy-title/PolicyTitle";
 import TokenSelector from "@/modules/shared/token-selector/TokenSelector";
 import WeiConverter from "@/modules/shared/wei-converter/WeiConverter";
@@ -50,30 +50,31 @@ const PolicyForm = ({ data, onSubmitCallback }: PolicyFormProps) => {
       // check if form has policyId, this means we are editing policy
       if (policyId) {
         try {
-          updatePolicy(policy).then((updatedSuccessfully) => {
-            if (updatedSuccessfully && onSubmitCallback) {
-              onSubmitCallback(policy);
-            }
-          });
-        } catch (error: any) {
-          console.error("Failed to update policy:", error.message);
+          const updatedSuccessfully = await updatePolicy(policy);
+          if (updatedSuccessfully && onSubmitCallback) {
+            onSubmitCallback(policy);
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            console.error("Failed to update policy:", error.message);
+          }
         }
 
         return;
       }
 
       try {
-        addPolicy(policy).then((addedSuccessfully) => {
-          if (!addedSuccessfully) return;
-
-          setFormData(initialFormData); // Reset formData to initial state
-          setFormKey((prevKey) => prevKey + 1); // Change key to force remount
-          if (onSubmitCallback) {
-            onSubmitCallback(policy);
-          }
-        });
-      } catch (error: any) {
-        console.error("Failed to create policy:", error.message);
+        const addedSuccessfully = await addPolicy(policy);
+        if (!addedSuccessfully) return;
+        setFormData(initialFormData); // Reset formData to initial state
+        setFormKey((prevKey) => prevKey + 1); // Change key to force remount
+        if (onSubmitCallback) {
+          onSubmitCallback(policy);
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error("Failed to create policy:", error.message);
+        }
       }
     }
   };
@@ -96,7 +97,7 @@ const PolicyForm = ({ data, onSubmitCallback }: PolicyFormProps) => {
   };
 
   return (
-    <div className="policy-form">
+    <div className="policy-form" data-testid="policy-form-wrapper">
       {schema && (
         <Form
           key={formKey} // Forces full re-render on reset
