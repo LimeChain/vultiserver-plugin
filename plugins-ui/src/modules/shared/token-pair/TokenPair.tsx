@@ -2,7 +2,7 @@ import { supportedTokens } from "@/modules/shared/data/tokens";
 import { cloneElement } from "react";
 import "./TokenPair.css";
 
-type TokenPairProps = {
+export type TokenPairProps = {
   data: [string, string];
 };
 

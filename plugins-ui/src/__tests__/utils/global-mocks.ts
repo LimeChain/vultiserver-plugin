@@ -250,7 +250,7 @@ export const mockedDCAPolicy = {
         submitText: "Save policy",
       },
     },
-  },
+  } as RJSFSchema,
   table: {
     columns: [
       {
@@ -292,10 +292,10 @@ export const mockedDCAPolicy = {
       toBuy: "policy.destination_token_id",
     },
   },
-} as RJSFSchema;
+};
 
 export const mockPluginPolicy = {
-  id: "ID",
+  id: "c5196498-7191-49c9-9236-e9d95e8470d9",
   public_key: "Public Key",
   is_ecdsa: false,
   chain_code_hex: "Chain code HEX",
@@ -320,6 +320,18 @@ export const mockPluginPolicy = {
     destination_token_id: "0xB8c77482e45F1F44dE1745F52C74426C631bDD52",
   },
   active: true,
+};
+
+export const mockPlugin = {
+  id: "411ba072-df9b-4686-9ac8-d6e492394ba7",
+  created_at: "2025-04-08T13:11:06.183848Z",
+  updated_at: "2025-04-08T13:11:06.183848Z",
+  type: "dca",
+  title: "DCA Plugin",
+  description: "Dollar cost averaging plugin automation",
+  metadata: '{"foo": "bar"}',
+  server_endpoint: "http://localhost:8081",
+  pricing_id: "3d2e4b50-0213-4751-a72c-45935d957c3f",
 };
 
 export const getWidgetPropsMock = (value: unknown) => {

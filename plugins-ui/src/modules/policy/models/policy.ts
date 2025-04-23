@@ -1,7 +1,15 @@
 import { RJSFSchema } from "@rjsf/utils";
+import { ColumnDef } from "@tanstack/react-table";
 
 export type Policy<T = string | number | boolean | null | undefined> = {
   [key: string]: T | Policy<T>;
+};
+
+export type PolicyTableColumn = ColumnDef<unknown> & {
+  accessorKey: string;
+  header: string;
+  cellComponent?: string;
+  expandable?: boolean;
 };
 
 export type PluginPolicy = {
